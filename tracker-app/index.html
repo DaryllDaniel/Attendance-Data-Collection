@@ -87,6 +87,11 @@
             </div>
         </div>
 
+        <!-- Validation Message Box -->
+        <div id="validationMessage" class="mt-6 p-4 text-center text-red-700 bg-red-100 rounded-lg border border-red-300 hidden">
+            Please fill in all the required fields.
+        </div>
+
         <!-- Buttons -->
         <div class="mt-8 flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
             <button id="showDataBtn" class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition duration-300 ease-in-out transform hover:scale-105 font-bold">Show Pie Chart</button>
@@ -118,13 +123,14 @@
         const chartModal = document.getElementById('chartModal');
         const closeModalBtn = document.getElementById('closeModalBtn');
         const chartCanvas = document.getElementById('myPieChart');
+        const validationMessage = document.getElementById('validationMessage');
         let myPieChart = null; // Variable to hold the chart instance
 
         // --- Helper Function to get data from inputs ---
         const getStudentData = () => {
             const getVal = (id) => parseInt(document.getElementById(id).value) || 0;
-            const department = document.getElementById('department').value || 'N/A';
-            const program = document.getElementById('program').value || 'N/A';
+            const department = document.getElementById('department').value;
+            const program = document.getElementById('program').value;
 
             return {
                 department,
@@ -138,6 +144,56 @@
 
         // --- Show Pie Chart Functionality ---
         const showPieChart = () => {
+            // First, get all the inputs to validate
+            const textInputs = ['department', 'program'];
+            const numberInputs = [
+                'year1_total', 'year1_present', 'year1_absent',
+                'year2_total', 'year2_present', 'year2_absent',
+                'year3_total', 'year3_present', 'year3_absent',
+                'year4_total', 'year4_present', 'year4_absent'
+            ];
+
+            let firstInvalidInput = null;
+            let isValid = true;
+
+            // Clear previous validation highlights
+            [...textInputs, ...numberInputs].forEach(id => {
+                const input = document.getElementById(id);
+                input.classList.remove('border-red-500');
+            });
+
+            // Validate text inputs
+            textInputs.forEach(id => {
+                const input = document.getElementById(id);
+                if (input.value.trim() === '') {
+                    input.classList.add('border-red-500');
+                    if (!firstInvalidInput) firstInvalidInput = input;
+                    isValid = false;
+                }
+            });
+
+            // Validate number inputs
+            numberInputs.forEach(id => {
+                const input = document.getElementById(id);
+                // The input.value for number fields defaults to '0' on first load, so we check if it's explicitly an empty string
+                if (input.value.trim() === '' || parseInt(input.value) < 0) {
+                    input.classList.add('border-red-500');
+                    if (!firstInvalidInput) firstInvalidInput = input;
+                    isValid = false;
+                }
+            });
+
+            if (!isValid) {
+                validationMessage.classList.remove('hidden');
+                if (firstInvalidInput) {
+                    firstInvalidInput.focus();
+                }
+                return; // Stop execution if validation fails
+            }
+
+            // Hide validation message if everything is valid
+            validationMessage.classList.add('hidden');
+
             const data = getStudentData();
             const totalPresent = data.year1.present + data.year2.present + data.year3.present + data.year4.present;
             const totalAbsent = data.year1.absent + data.year2.absent + data.year3.absent + data.year4.absent;
@@ -192,27 +248,27 @@
         const exportToCsv = () => {
             const data = getStudentData();
             const headers = [
-                'Department', 'Program', 
+                'Department', 'Program',
                 '1st Year Total', '1st Year Present', '1st Year Absent',
                 '2nd Year Total', '2nd Year Present', '2nd Year Absent',
                 '3rd Year Total', '3rd Year Present', '3rd Year Absent',
                 '4th Year Total', '4th Year Present', '4th Year Absent'
             ];
             const values = [
-                data.department, data.program,
+                data.department || 'N/A', data.program || 'N/A',
                 data.year1.total, data.year1.present, data.year1.absent,
                 data.year2.total, data.year2.present, data.year2.absent,
                 data.year3.total, data.year3.present, data.year3.absent,
                 data.year4.total, data.year4.present, data.year4.absent
             ];
-            
+
             // Format data into CSV string
             const csvContent = headers.join(',') + '\n' + values.join(',');
-            
+
             // Create a Blob and a temporary link to trigger download
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
-            
+
             if (link.download !== undefined) {
                 const url = URL.createObjectURL(blob);
                 link.setAttribute('href', url);

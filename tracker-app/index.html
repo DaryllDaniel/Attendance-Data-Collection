@@ -15,66 +15,67 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            @apply bg-gray-100 text-gray-800;
+            background: linear-gradient(to top left, #3b82f6, #1e3a8a);
+            @apply text-white min-h-screen flex items-center justify-center;
         }
         .app-container {
-            @apply bg-white rounded-2xl shadow-xl max-w-7xl mx-auto my-12 overflow-hidden flex flex-col lg:flex-row;
+            @apply bg-white/10 rounded-2xl shadow-xl max-w-4xl mx-auto my-12 overflow-hidden w-full backdrop-blur-sm;
         }
         .form-panel {
-            @apply p-8 lg:p-12 flex-1;
-        }
-        .summary-panel {
-            @apply bg-gray-50 p-8 lg:p-12 lg:w-96 flex-shrink-0;
+            @apply p-8 lg:p-12;
         }
         .input-field {
-            @apply w-full p-3 rounded-lg border-2 border-gray-200 bg-white focus:outline-none focus:border-blue-500 transition-colors duration-200;
+            @apply w-full p-3 rounded-lg border-2 border-white/20 bg-white/10 text-white placeholder-gray-300 focus:outline-none focus:border-white transition-colors duration-200;
+        }
+        .input-field::placeholder {
+            @apply text-gray-300;
         }
         .btn {
             @apply py-3 px-6 rounded-lg font-semibold transition-colors duration-200;
         }
         .btn-primary {
-            @apply bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/50;
+            @apply bg-white text-blue-600 hover:bg-gray-200 hover:shadow-lg hover:shadow-gray-500/50;
         }
         .btn-secondary {
-            @apply bg-gray-300 text-gray-800 hover:bg-gray-400;
+            @apply bg-gray-300/20 text-white hover:bg-gray-400/20;
         }
         .modal {
             @apply fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 transition-opacity duration-300;
         }
         .modal-content {
-            @apply bg-white rounded-2xl shadow-xl p-8 max-w-5xl w-full max-h-[90vh] overflow-y-auto relative;
+            @apply bg-gray-900 rounded-2xl shadow-xl p-8 max-w-5xl w-full max-h-[90vh] overflow-y-auto relative;
         }
         .modal-close-btn {
-            @apply absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold;
+            @apply absolute top-4 right-4 text-gray-400 hover:text-white text-2xl font-bold;
         }
         .chart-card {
-            @apply bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6;
+            @apply bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-700 mb-6;
         }
     </style>
 </head>
 <body>
-
+    <!-- The new container div with a backdrop -->
     <div class="app-container">
         <!-- Main Form Panel -->
         <div class="form-panel">
             <!-- Header Section with Department and Program Inputs -->
-            <div class="mb-10">
-                <div class="flex items-center mb-4">
+            <div class="mb-10 text-center">
+                <div class="flex items-center justify-center mb-4">
                     <!-- Placeholder for a logo/icon -->
-                    <div class="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xl mr-4">KCP</div>
-                    <h1 class="text-3xl font-bold text-blue-800">Student Attendance Tracker</h1>
+                    <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center text-blue-600 font-bold text-xl mr-4">KCP</div>
+                    <h1 class="text-3xl font-bold">Student Attendance Tracker</h1>
                 </div>
-                <p class="text-gray-600">Enter student attendance data to calculate and visualize percentages.</p>
+                <p class="text-gray-300">Enter student attendance data to calculate and visualize percentages.</p>
             </div>
 
             <!-- Input Form Section -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
                 <div>
-                    <label for="department" class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                    <label for="department" class="block text-sm font-medium text-gray-200 mb-1">Department</label>
                     <input type="text" id="department" placeholder="e.g., CABM" class="input-field">
                 </div>
                 <div>
-                    <label for="program" class="block text-sm font-medium text-gray-700 mb-1">Program</label>
+                    <label for="program" class="block text-sm font-medium text-gray-200 mb-1">Program</label>
                     <input type="text" id="program" placeholder="e.g., Accountancy" class="input-field">
                 </div>
             </div>
@@ -83,18 +84,18 @@
             <div class="space-y-12">
                 <!-- 1st Year -->
                 <div>
-                    <h3 class="text-xl font-bold mb-4 text-gray-700">1st Year Students</h3>
+                    <h3 class="text-xl font-bold mb-4 text-gray-200">1st Year Students</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                         <div>
-                            <label for="total1st" class="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                            <label for="total1st" class="block text-sm font-medium text-gray-200 mb-1">Total</label>
                             <input type="number" id="total1st" placeholder="Total 1st years" class="input-field">
                         </div>
                         <div>
-                            <label for="present1st" class="block text-sm font-medium text-gray-700 mb-1">Present</label>
+                            <label for="present1st" class="block text-sm font-medium text-gray-200 mb-1">Present</label>
                             <input type="number" id="present1st" placeholder="Present 1st years" class="input-field">
                         </div>
                         <div>
-                            <label for="absent1st" class="block text-sm font-medium text-gray-700 mb-1">Absent</label>
+                            <label for="absent1st" class="block text-sm font-medium text-gray-200 mb-1">Absent</label>
                             <input type="number" id="absent1st" placeholder="Absent 1st years" class="input-field">
                         </div>
                     </div>
@@ -102,18 +103,18 @@
 
                 <!-- 2nd Year -->
                 <div>
-                    <h3 class="text-xl font-bold mb-4 text-gray-700">2nd Year Students</h3>
+                    <h3 class="text-xl font-bold mb-4 text-gray-200">2nd Year Students</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                         <div>
-                            <label for="total2nd" class="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                            <label for="total2nd" class="block text-sm font-medium text-gray-200 mb-1">Total</label>
                             <input type="number" id="total2nd" placeholder="Total 2nd years" class="input-field">
                         </div>
                         <div>
-                            <label for="present2nd" class="block text-sm font-medium text-gray-700 mb-1">Present</label>
+                            <label for="present2nd" class="block text-sm font-medium text-gray-200 mb-1">Present</label>
                             <input type="number" id="present2nd" placeholder="Present 2nd years" class="input-field">
                         </div>
                         <div>
-                            <label for="absent2nd" class="block text-sm font-medium text-gray-700 mb-1">Absent</label>
+                            <label for="absent2nd" class="block text-sm font-medium text-gray-200 mb-1">Absent</label>
                             <input type="number" id="absent2nd" placeholder="Absent 2nd years" class="input-field">
                         </div>
                     </div>
@@ -121,18 +122,18 @@
                 
                 <!-- 3rd Year -->
                 <div>
-                    <h3 class="text-xl font-bold mb-4 text-gray-700">3rd Year Students</h3>
+                    <h3 class="text-xl font-bold mb-4 text-gray-200">3rd Year Students</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                         <div>
-                            <label for="total3rd" class="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                            <label for="total3rd" class="block text-sm font-medium text-gray-200 mb-1">Total</label>
                             <input type="number" id="total3rd" placeholder="Total 3rd years" class="input-field">
                         </div>
                         <div>
-                            <label for="present3rd" class="block text-sm font-medium text-gray-700 mb-1">Present</label>
+                            <label for="present3rd" class="block text-sm font-medium text-gray-200 mb-1">Present</label>
                             <input type="number" id="present3rd" placeholder="Present 3rd years" class="input-field">
                         </div>
                         <div>
-                            <label for="absent3rd" class="block text-sm font-medium text-gray-700 mb-1">Absent</label>
+                            <label for="absent3rd" class="block text-sm font-medium text-gray-200 mb-1">Absent</label>
                             <input type="number" id="absent3rd" placeholder="Absent 3rd years" class="input-field">
                         </div>
                     </div>
@@ -140,18 +141,18 @@
 
                 <!-- 4th Year -->
                 <div>
-                    <h3 class="text-xl font-bold mb-4 text-gray-700">4th Year Students</h3>
+                    <h3 class="text-xl font-bold mb-4 text-gray-200">4th Year Students</h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                         <div>
-                            <label for="total4th" class="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                            <label for="total4th" class="block text-sm font-medium text-gray-200 mb-1">Total</label>
                             <input type="number" id="total4th" placeholder="Total 4th years" class="input-field">
                         </div>
                         <div>
-                            <label for="present4th" class="block text-sm font-medium text-gray-700 mb-1">Present</label>
+                            <label for="present4th" class="block text-sm font-medium text-gray-200 mb-1">Present</label>
                             <input type="number" id="present4th" placeholder="Present 4th years" class="input-field">
                         </div>
                         <div>
-                            <label for="absent4th" class="block text-sm font-medium text-gray-700 mb-1">Absent</label>
+                            <label for="absent4th" class="block text-sm font-medium text-gray-200 mb-1">Absent</label>
                             <input type="number" id="absent4th" placeholder="Absent 4th years" class="input-field">
                         </div>
                     </div>
@@ -165,48 +166,8 @@
             </div>
 
             <!-- Message/Error Display -->
-            <div id="message" class="text-center text-red-500 font-medium mt-4" style="display: none;"></div>
+            <div id="message" class="text-center text-white font-medium mt-4" style="display: none;"></div>
             
-        </div>
-
-        <!-- Summary Panel -->
-        <div class="summary-panel">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Overall Attendance Overview</h2>
-            <div class="space-y-6">
-                <div class="flex items-center space-x-4">
-                    <div class="w-12 h-12 rounded-full bg-blue-200 flex items-center justify-center text-blue-800">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path d="M17 14v6m-4-2h4m-4-2H7m4-2V8m0 0a4 4 0 100-8 4 4 0 000 8zM7 16a2 2 0 100-4 2 2 0 000 4zM21 16a2 2 0 100-4 2 2 0 000 4z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500">Total Students</p>
-                        <p id="totalStudents" class="text-xl font-bold text-gray-800">0</p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <div class="w-12 h-12 rounded-full bg-green-200 flex items-center justify-center text-green-800">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500">Total Present</p>
-                        <p id="totalPresent" class="text-xl font-bold text-gray-800">0</p>
-                    </div>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <div class="w-12 h-12 rounded-full bg-red-200 flex items-center justify-center text-red-800">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-sm text-gray-500">Total Absent</p>
-                        <p id="totalAbsent" class="text-xl font-bold text-gray-800">0</p>
-                    </div>
-                </div>
-            </div>
         </div>
         
     </div>
@@ -215,7 +176,7 @@
     <div id="resultsModal" class="modal hidden">
         <div class="modal-content">
             <span id="closeModalBtn" class="modal-close-btn">&times;</span>
-            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Attendance Summary</h2>
+            <h2 class="text-2xl font-bold text-center text-white mb-6">Attendance Summary</h2>
             <div id="chartsContainer" class="flex flex-wrap justify-center gap-8">
                 <!-- Pie charts will be injected here by JavaScript -->
             </div>
@@ -233,16 +194,15 @@
             const departmentInput = document.getElementById('department');
             const programInput = document.getElementById('program');
             
-            const totalStudentsDiv = document.getElementById('totalStudents');
-            const totalPresentDiv = document.getElementById('totalPresent');
-            const totalAbsentDiv = document.getElementById('totalAbsent');
+            // Removed references to totalStudentsDiv, totalPresentDiv, totalAbsentDiv
+            // as the overall summary panel was removed.
 
             let pieCharts = {}; // Object to hold pie chart instances
 
             // Function to display messages (errors or success)
             const showMessage = (text, type = 'error') => {
                 messageDiv.textContent = text;
-                messageDiv.style.color = type === 'error' ? 'red' : 'green';
+                messageDiv.style.color = type === 'error' ? '#ef4444' : '#22c55e'; // Use specific Tailwind colors
                 messageDiv.style.display = 'block';
             };
 
@@ -262,14 +222,14 @@
                 chartCard.className = 'chart-card flex flex-col items-center';
 
                 const title = document.createElement('h3');
-                title.className = 'text-lg font-semibold text-gray-700 mb-2 text-center';
+                title.className = 'text-lg font-semibold text-gray-200 mb-2 text-center';
                 title.textContent = `${year} Year Students`;
                 chartCard.appendChild(title);
                 
                 chartCard.appendChild(canvas);
 
                 const stats = document.createElement('div');
-                stats.className = 'text-sm text-gray-600 mt-2 text-center';
+                stats.className = 'text-sm text-gray-400 mt-2 text-center';
                 stats.innerHTML = `
                     <p>Total: ${total}</p>
                     <p>Present: ${present} (${(total > 0 ? (present / total * 100).toFixed(2) : 0)}%)</p>
@@ -397,16 +357,6 @@
                     showMessage('Please enter at least one student data to show the charts.');
                     return;
                 }
-
-                // Update the summary panel
-                const overallTotal = yearData.reduce((sum, data) => sum + data.total, 0);
-                const overallPresent = yearData.reduce((sum, data) => sum + data.present, 0);
-                const overallAbsent = yearData.reduce((sum, data) => sum + data.absent, 0);
-                
-                totalStudentsDiv.textContent = overallTotal;
-                totalPresentDiv.textContent = overallPresent;
-                totalAbsentDiv.textContent = overallAbsent;
-
 
                 // If all validation passes, create charts and show the modal
                 yearData.forEach(data => {

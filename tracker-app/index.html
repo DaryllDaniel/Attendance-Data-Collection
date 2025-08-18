@@ -13,25 +13,18 @@
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
         }
-        /* Custom modal animation */
-        .modal {
-            transition: opacity 0.3s ease-in-out, visibility 0.3s ease-in-out;
-        }
-        .modal.hidden {
-            opacity: 0;
-            visibility: hidden;
-        }
     </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
-    <!-- Main Application Container -->
-    <div class="bg-white p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-2xl transform transition-transform duration-300 hover:scale-105">
-        <h1 class="text-3xl md:text-4xl font-extrabold text-center text-blue-800 mb-6">Student Data Input</h1>
-        <p class="text-center text-gray-600 mb-8">Enter the student data below and visualize it with a pie chart or export it as a CSV file.</p>
+    <!-- Main Application Container: Now a flex container for two sections -->
+    <div class="bg-white p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col md:flex-row gap-8">
 
-        <!-- Input Form -->
-        <div class="space-y-6">
+        <!-- Input Form Section (Left Side) -->
+        <div class="w-full md:w-1/2 space-y-6">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-center md:text-left text-blue-800 mb-6">Student Data Input</h1>
+            <p class="text-center md:text-left text-gray-600 mb-8">Enter the student data below to see the attendance charts update in real-time or export the data as a CSV file.</p>
+
             <!-- Department and Program fields -->
             <div>
                 <label for="department" class="block text-sm font-semibold text-gray-700">Department</label>
@@ -43,7 +36,7 @@
             </div>
 
             <!-- Student Data for each year level -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
                 <!-- 1st Year Students -->
                 <div class="p-4 bg-blue-50 rounded-lg shadow-sm">
                     <h3 class="font-bold text-blue-600 mb-2">1st Year Students</h3>
@@ -85,77 +78,60 @@
                     <input type="number" id="year4_absent" class="mt-1 block w-full rounded-md border-gray-300 p-2 text-sm" value="0">
                 </div>
             </div>
+
+            <!-- Export Button -->
+            <div class="mt-8 flex justify-center">
+                <button id="exportCsvBtn" class="w-full px-6 py-3 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105 font-bold">Export to CSV</button>
+            </div>
         </div>
 
-        <!-- Validation Message Box -->
-        <div id="validationMessage" class="mt-6 p-4 text-center text-red-700 bg-red-100 rounded-lg border border-red-300 hidden">
-            Please fill in all the required fields.
-        </div>
+        <!-- Real-time Chart Display Section (Right Side) -->
+        <div class="w-full md:w-1/2 flex flex-col justify-center items-center p-4 bg-gray-50 rounded-xl shadow-inner">
+            <h2 class="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-4">Live Attendance Charts</h2>
 
-        <!-- Buttons -->
-        <div class="mt-8 flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-            <button id="showDataBtn" class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg shadow-md hover:bg-blue-700 transition duration-300 ease-in-out transform hover:scale-105 font-bold">Show Pie Chart</button>
-            <button id="exportCsvBtn" class="w-full sm:w-auto px-6 py-3 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105 font-bold">Export to CSV</button>
-        </div>
-    </div>
-
-    <!-- Pie Chart Modal (initially hidden) -->
-    <div id="chartModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-2xl relative">
-            <h2 class="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-4">Attendance Overview</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-xl">
                 <!-- Overall Chart -->
-                <div class="col-span-1 md:col-span-2 lg:col-span-3 p-4">
+                <div class="col-span-1 sm:col-span-2 p-4 bg-white rounded-lg shadow-md">
                     <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Overall Attendance</h3>
-                    <div class="w-full h-auto max-w-sm mx-auto">
+                    <div class="w-full h-auto max-w-xs mx-auto">
                         <canvas id="myPieChart"></canvas>
                     </div>
                 </div>
                 <!-- 1st Year Chart -->
-                <div class="p-4">
+                <div class="p-4 bg-white rounded-lg shadow-md">
                     <h3 class="font-semibold text-center text-lg mb-2 text-blue-600">1st Year</h3>
-                    <div class="w-full h-auto max-w-xs mx-auto">
+                    <div class="w-full h-auto max-w-[150px] mx-auto">
                         <canvas id="year1PieChart"></canvas>
                     </div>
                 </div>
                 <!-- 2nd Year Chart -->
-                <div class="p-4">
+                <div class="p-4 bg-white rounded-lg shadow-md">
                     <h3 class="font-semibold text-center text-lg mb-2 text-green-600">2nd Year</h3>
-                    <div class="w-full h-auto max-w-xs mx-auto">
+                    <div class="w-full h-auto max-w-[150px] mx-auto">
                         <canvas id="year2PieChart"></canvas>
                     </div>
                 </div>
                 <!-- 3rd Year Chart -->
-                <div class="p-4">
+                <div class="p-4 bg-white rounded-lg shadow-md">
                     <h3 class="font-semibold text-center text-lg mb-2 text-yellow-600">3rd Year</h3>
-                    <div class="w-full h-auto max-w-xs mx-auto">
+                    <div class="w-full h-auto max-w-[150px] mx-auto">
                         <canvas id="year3PieChart"></canvas>
                     </div>
                 </div>
                 <!-- 4th Year Chart -->
-                <div class="p-4">
+                <div class="p-4 bg-white rounded-lg shadow-md">
                     <h3 class="font-semibold text-center text-lg mb-2 text-purple-600">4th Year</h3>
-                    <div class="w-full h-auto max-w-xs mx-auto">
+                    <div class="w-full h-auto max-w-[150px] mx-auto">
                         <canvas id="year4PieChart"></canvas>
                     </div>
                 </div>
             </div>
-            <!-- Close Button -->
-            <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
         </div>
     </div>
 
     <script>
         // --- DOM Element References ---
-        const showDataBtn = document.getElementById('showDataBtn');
         const exportCsvBtn = document.getElementById('exportCsvBtn');
-        const chartModal = document.getElementById('chartModal');
-        const closeModalBtn = document.getElementById('closeModalBtn');
-        const validationMessage = document.getElementById('validationMessage');
         const chartInstances = {}; // Object to store all chart instances
 
         // --- Helper Function to get data from inputs ---
@@ -174,9 +150,15 @@
             };
         };
 
-        // --- Helper function to create a pie chart ---
-        const createPieChart = (canvasId, presentCount, absentCount) => {
+        // --- Helper function to create/update a pie chart ---
+        const updatePieChart = (canvasId, presentCount, absentCount) => {
             const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error(`Canvas element with ID '${canvasId}' not found.`);
+                return;
+            }
+
+            // Destroy previous chart instance if it exists to prevent memory leaks
             if (chartInstances[canvasId]) {
                 chartInstances[canvasId].destroy();
             }
@@ -222,70 +204,17 @@
             chartInstances[canvasId] = chart;
         };
 
-        // --- Show Pie Chart Functionality ---
-        const showPieChart = () => {
-            // First, get all the inputs to validate
-            const textInputs = ['department', 'program'];
-            const numberInputs = [
-                'year1_total', 'year1_present', 'year1_absent',
-                'year2_total', 'year2_present', 'year2_absent',
-                'year3_total', 'year3_present', 'year3_absent',
-                'year4_total', 'year4_present', 'year4_absent'
-            ];
-
-            let firstInvalidInput = null;
-            let isValid = true;
-
-            // Clear previous validation highlights
-            [...textInputs, ...numberInputs].forEach(id => {
-                const input = document.getElementById(id);
-                input.classList.remove('border-red-500');
-            });
-
-            // Validate text inputs
-            textInputs.forEach(id => {
-                const input = document.getElementById(id);
-                if (input.value.trim() === '') {
-                    input.classList.add('border-red-500');
-                    if (!firstInvalidInput) firstInvalidInput = input;
-                    isValid = false;
-                }
-            });
-
-            // Validate number inputs
-            numberInputs.forEach(id => {
-                const input = document.getElementById(id);
-                // The input.value for number fields defaults to '0' on first load, so we check if it's explicitly an empty string
-                if (input.value.trim() === '' || parseInt(input.value) < 0) {
-                    input.classList.add('border-red-500');
-                    if (!firstInvalidInput) firstInvalidInput = input;
-                    isValid = false;
-                }
-            });
-
-            if (!isValid) {
-                validationMessage.classList.remove('hidden');
-                if (firstInvalidInput) {
-                    firstInvalidInput.focus();
-                }
-                return; // Stop execution if validation fails
-            }
-
-            // Hide validation message if everything is valid
-            validationMessage.classList.add('hidden');
-
+        // --- Function to update all charts with current data ---
+        const updateAllCharts = () => {
             const data = getStudentData();
             const totalPresent = data.year1.present + data.year2.present + data.year3.present + data.year4.present;
             const totalAbsent = data.year1.absent + data.year2.absent + data.year3.absent + data.year4.absent;
 
-            // Create all the pie charts
-            createPieChart('myPieChart', totalPresent, totalAbsent);
-            createPieChart('year1PieChart', data.year1.present, data.year1.absent);
-            createPieChart('year2PieChart', data.year2.present, data.year2.absent);
-            createPieChart('year3PieChart', data.year3.present, data.year3.absent);
-            createPieChart('year4PieChart', data.year4.present, data.year4.absent);
-
-            chartModal.classList.remove('hidden'); // Show the modal
+            updatePieChart('myPieChart', totalPresent, totalAbsent);
+            updatePieChart('year1PieChart', data.year1.present, data.year1.absent);
+            updatePieChart('year2PieChart', data.year2.present, data.year2.absent);
+            updatePieChart('year3PieChart', data.year3.present, data.year3.absent);
+            updatePieChart('year4PieChart', data.year4.present, data.year4.absent);
         };
 
         // --- Export to CSV Functionality ---
@@ -323,31 +252,28 @@
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url); // Free up the object URL
             } else {
-                alert('Your browser does not support downloading CSV files directly.');
+                // Using an alternative message box instead of alert()
+                const messageBox = document.createElement('div');
+                messageBox.textContent = 'Your browser does not support downloading CSV files directly.';
+                messageBox.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000;';
+                document.body.appendChild(messageBox);
+                setTimeout(() => document.body.removeChild(messageBox), 3000);
             }
         };
 
         // --- Event Listeners ---
-        showDataBtn.addEventListener('click', showPieChart);
+        // Listen for 'input' events on all number fields to trigger real-time updates
+        const numberInputs = document.querySelectorAll('input[type="number"]');
+        numberInputs.forEach(input => {
+            input.addEventListener('input', updateAllCharts);
+        });
+
         exportCsvBtn.addEventListener('click', exportToCsv);
-        closeModalBtn.addEventListener('click', () => {
-            chartModal.classList.add('hidden');
-        });
 
-        // Close modal when clicking outside of it
-        chartModal.addEventListener('click', (event) => {
-            if (event.target === chartModal) {
-                chartModal.classList.add('hidden');
-            }
-        });
-
-        // Close modal with the Escape key
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') {
-                chartModal.classList.add('hidden');
-            }
+        // Initial chart render on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateAllCharts();
         });
     </script>
-
 </body>
 </html>

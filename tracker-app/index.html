@@ -151,8 +151,8 @@
 
         <!-- Action Buttons -->
         <div class="flex flex-col sm:flex-row gap-4 mb-8 mt-8">
-            <button id="showDataBtn" class="btn btn-primary flex-grow">Show Data</button>
-            <button id="exportBtn" class="btn btn-secondary flex-grow">Export as CSV</button>
+            <button id="showDataBtn" class="btn btn-primary flex-grow hover:bg-blue-700">Show Data</button>
+            <button id="exportBtn" class="btn btn-secondary flex-grow hover:bg-gray-400">Export as CSV</button>
         </div>
 
         <!-- Message/Error Display -->
@@ -193,7 +193,7 @@
 
             // Function to create or update a pie chart
             const updatePieChart = (year, total, present, absent) => {
-                const chartId = `pieChart${year}th`;
+                const chartId = `pieChart${year}`;
                 const canvas = document.createElement('canvas');
                 canvas.id = chartId;
                 canvas.className = 'w-[150px] h-[150px]';

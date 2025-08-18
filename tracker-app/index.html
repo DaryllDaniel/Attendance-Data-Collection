@@ -18,16 +18,16 @@
             @apply bg-gray-100 text-gray-800;
         }
         .app-container {
-            @apply bg-gray-50 rounded-2xl shadow-lg max-w-6xl mx-auto my-12 overflow-hidden flex flex-col md:flex-row;
+            @apply bg-white rounded-2xl shadow-xl max-w-7xl mx-auto my-12 overflow-hidden flex flex-col lg:flex-row;
         }
         .form-panel {
             @apply p-8 lg:p-12 flex-1;
         }
         .summary-panel {
-            @apply bg-white p-8 lg:p-12 flex-1 rounded-r-2xl border-l border-gray-100;
+            @apply bg-gray-50 p-8 lg:p-12 lg:w-96 flex-shrink-0;
         }
         .input-field {
-            @apply w-full p-3 rounded-lg border-2 border-gray-200 bg-gray-50 focus:outline-none focus:border-blue-500 transition-colors duration-200;
+            @apply w-full p-3 rounded-lg border-2 border-gray-200 bg-white focus:outline-none focus:border-blue-500 transition-colors duration-200;
         }
         .btn {
             @apply py-3 px-6 rounded-lg font-semibold transition-colors duration-200;
@@ -48,7 +48,7 @@
             @apply absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold;
         }
         .chart-card {
-            @apply bg-gray-50 p-6 rounded-xl shadow-inner mb-6;
+            @apply bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6;
         }
     </style>
 </head>
@@ -58,7 +58,7 @@
         <!-- Main Form Panel -->
         <div class="form-panel">
             <!-- Header Section with Department and Program Inputs -->
-            <div class="mb-8">
+            <div class="mb-10">
                 <div class="flex items-center mb-4">
                     <!-- Placeholder for a logo/icon -->
                     <div class="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xl mr-4">KCP</div>
@@ -68,7 +68,7 @@
             </div>
 
             <!-- Input Form Section -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
                 <div>
                     <label for="department" class="block text-sm font-medium text-gray-700 mb-1">Department</label>
                     <input type="text" id="department" placeholder="e.g., CABM" class="input-field">
@@ -80,7 +80,7 @@
             </div>
 
             <!-- Year Level Input Sections -->
-            <div class="space-y-8">
+            <div class="space-y-12">
                 <!-- 1st Year -->
                 <div>
                     <h3 class="text-xl font-bold mb-4 text-gray-700">1st Year Students</h3>
@@ -159,24 +159,24 @@
             </div>
 
             <!-- Action Buttons -->
-            <div class="flex flex-col sm:flex-row gap-4 mb-8 mt-8">
-                <button id="showDataBtn" class="btn btn-primary flex-grow hover:bg-blue-700">Show Data</button>
-                <button id="exportBtn" class="btn btn-secondary flex-grow hover:bg-gray-400">Export as CSV</button>
+            <div class="flex flex-col sm:flex-row gap-4 mt-12">
+                <button id="showDataBtn" class="btn btn-primary flex-grow">Show Data</button>
+                <button id="exportBtn" class="btn btn-secondary flex-grow">Export as CSV</button>
             </div>
 
             <!-- Message/Error Display -->
-            <div id="message" class="text-center text-red-500 font-medium mb-4" style="display: none;"></div>
+            <div id="message" class="text-center text-red-500 font-medium mt-4" style="display: none;"></div>
             
         </div>
 
         <!-- Summary Panel -->
-        <div class="summary-panel hidden md:block" id="summaryPanel">
+        <div class="summary-panel">
             <h2 class="text-2xl font-bold text-gray-800 mb-6">Overall Attendance Overview</h2>
             <div class="space-y-6">
                 <div class="flex items-center space-x-4">
                     <div class="w-12 h-12 rounded-full bg-blue-200 flex items-center justify-center text-blue-800">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.5v15m0 0l-4-4m4 4l4-4" />
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path d="M17 14v6m-4-2h4m-4-2H7m4-2V8m0 0a4 4 0 100-8 4 4 0 000 8zM7 16a2 2 0 100-4 2 2 0 000 4zM21 16a2 2 0 100-4 2 2 0 000 4z" />
                         </svg>
                     </div>
                     <div>
@@ -186,8 +186,8 @@
                 </div>
                 <div class="flex items-center space-x-4">
                     <div class="w-12 h-12 rounded-full bg-green-200 flex items-center justify-center text-green-800">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
                     <div>
@@ -197,8 +197,8 @@
                 </div>
                 <div class="flex items-center space-x-4">
                     <div class="w-12 h-12 rounded-full bg-red-200 flex items-center justify-center text-red-800">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
                     <div>
@@ -251,8 +251,9 @@
                 const chartId = `pieChart${year}`;
                 const canvas = document.createElement('canvas');
                 canvas.id = chartId;
+                canvas.className = 'w-[150px] h-[150px]'; // Fixed size for consistent layout
                 
-                // Clear the container before adding new charts
+                // Destroy any previous chart instances
                 if (pieCharts[chartId]) {
                     pieCharts[chartId].destroy();
                 }

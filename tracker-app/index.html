@@ -101,12 +101,45 @@
 
     <!-- Pie Chart Modal (initially hidden) -->
     <div id="chartModal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-lg relative">
-            <h2 id="chartTitle" class="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-4">Attendance Overview</h2>
-            <div class="w-full">
-                <canvas id="myPieChart"></canvas>
+        <div class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-2xl relative">
+            <h2 class="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-4">Attendance Overview</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Overall Chart -->
+                <div class="col-span-1 md:col-span-2 lg:col-span-3 p-4">
+                    <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Overall Attendance</h3>
+                    <div class="w-full h-auto max-w-sm mx-auto">
+                        <canvas id="myPieChart"></canvas>
+                    </div>
+                </div>
+                <!-- 1st Year Chart -->
+                <div class="p-4">
+                    <h3 class="font-semibold text-center text-lg mb-2 text-blue-600">1st Year</h3>
+                    <div class="w-full h-auto max-w-xs mx-auto">
+                        <canvas id="year1PieChart"></canvas>
+                    </div>
+                </div>
+                <!-- 2nd Year Chart -->
+                <div class="p-4">
+                    <h3 class="font-semibold text-center text-lg mb-2 text-green-600">2nd Year</h3>
+                    <div class="w-full h-auto max-w-xs mx-auto">
+                        <canvas id="year2PieChart"></canvas>
+                    </div>
+                </div>
+                <!-- 3rd Year Chart -->
+                <div class="p-4">
+                    <h3 class="font-semibold text-center text-lg mb-2 text-yellow-600">3rd Year</h3>
+                    <div class="w-full h-auto max-w-xs mx-auto">
+                        <canvas id="year3PieChart"></canvas>
+                    </div>
+                </div>
+                <!-- 4th Year Chart -->
+                <div class="p-4">
+                    <h3 class="font-semibold text-center text-lg mb-2 text-purple-600">4th Year</h3>
+                    <div class="w-full h-auto max-w-xs mx-auto">
+                        <canvas id="year4PieChart"></canvas>
+                    </div>
+                </div>
             </div>
-            <p class="text-sm text-center text-gray-500 mt-4">Present vs. Absent Student Count</p>
             <!-- Close Button -->
             <button id="closeModalBtn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition duration-200">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -122,9 +155,8 @@
         const exportCsvBtn = document.getElementById('exportCsvBtn');
         const chartModal = document.getElementById('chartModal');
         const closeModalBtn = document.getElementById('closeModalBtn');
-        const chartCanvas = document.getElementById('myPieChart');
         const validationMessage = document.getElementById('validationMessage');
-        let myPieChart = null; // Variable to hold the chart instance
+        const chartInstances = {}; // Object to store all chart instances
 
         // --- Helper Function to get data from inputs ---
         const getStudentData = () => {
@@ -140,6 +172,54 @@
                 year3: { total: getVal('year3_total'), present: getVal('year3_present'), absent: getVal('year3_absent') },
                 year4: { total: getVal('year4_total'), present: getVal('year4_present'), absent: getVal('year4_absent') }
             };
+        };
+
+        // --- Helper function to create a pie chart ---
+        const createPieChart = (canvasId, presentCount, absentCount) => {
+            const canvas = document.getElementById(canvasId);
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy();
+            }
+
+            const chart = new Chart(canvas, {
+                type: 'pie',
+                data: {
+                    labels: ['Present', 'Absent'],
+                    datasets: [{
+                        data: [presentCount, absentCount],
+                        backgroundColor: ['#2563eb', '#dc2626'],
+                        hoverOffset: 8,
+                        borderWidth: 2,
+                        borderColor: '#ffffff',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    const value = tooltipItem.raw;
+                                    const total = tooltipItem.dataset.data.reduce((acc, curr) => acc + curr, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
+                                    return ` ${tooltipItem.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '40%', // Create a donut chart
+                }
+            });
+
+            chartInstances[canvasId] = chart;
         };
 
         // --- Show Pie Chart Functionality ---
@@ -198,48 +278,12 @@
             const totalPresent = data.year1.present + data.year2.present + data.year3.present + data.year4.present;
             const totalAbsent = data.year1.absent + data.year2.absent + data.year3.absent + data.year4.absent;
 
-            if (myPieChart) {
-                myPieChart.destroy(); // Destroy previous chart instance
-            }
-
-            // Create new chart instance
-            myPieChart = new Chart(chartCanvas, {
-                type: 'pie',
-                data: {
-                    labels: ['Present', 'Absent'],
-                    datasets: [{
-                        data: [totalPresent, totalAbsent],
-                        backgroundColor: ['#2563eb', '#dc2626'],
-                        hoverOffset: 8,
-                        borderWidth: 2,
-                        borderColor: '#ffffff',
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                font: {
-                                    size: 14
-                                }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(tooltipItem) {
-                                    const value = tooltipItem.raw;
-                                    const total = tooltipItem.dataset.data.reduce((acc, curr) => acc + curr, 0);
-                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
-                                    return ` ${tooltipItem.label}: ${value} (${percentage}%)`;
-                                }
-                            }
-                        }
-                    },
-                    cutout: '40%', // Create a donut chart
-                }
-            });
+            // Create all the pie charts
+            createPieChart('myPieChart', totalPresent, totalAbsent);
+            createPieChart('year1PieChart', data.year1.present, data.year1.absent);
+            createPieChart('year2PieChart', data.year2.present, data.year2.absent);
+            createPieChart('year3PieChart', data.year3.present, data.year3.absent);
+            createPieChart('year4PieChart', data.year4.present, data.year4.absent);
 
             chartModal.classList.remove('hidden'); // Show the modal
         };

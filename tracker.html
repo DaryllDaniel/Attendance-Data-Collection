@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Attendance Tracker</title>
+    <!-- Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN for the pie chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            @apply bg-gray-100 text-gray-800;
+        }
+        .container-card {
+            @apply bg-white p-8 rounded-2xl shadow-lg max-w-4xl mx-auto my-12;
+        }
+        .input-field {
+            @apply w-full p-3 rounded-lg border-2 border-gray-200 bg-gray-50 focus:outline-none focus:border-blue-500 transition-colors duration-200;
+        }
+        .btn {
+            @apply py-3 px-6 rounded-lg font-semibold transition-colors duration-200;
+        }
+        .btn-primary {
+            @apply bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/50;
+        }
+        .btn-secondary {
+            @apply bg-gray-300 text-gray-800 hover:bg-gray-400;
+        }
+        .chart-container {
+            position: relative;
+            height: 150px;
+            width: 150px;
+        }
+        /* Modal-specific styles */
+        .modal {
+            @apply fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 transition-opacity duration-300;
+        }
+        .modal-content {
+            @apply bg-white rounded-2xl shadow-xl p-8 max-w-5xl w-full max-h-[90vh] overflow-y-auto relative;
+        }
+        .modal-close-btn {
+            @apply absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl font-bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container-card">
+        <!-- Header Section with Department and Program Inputs -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-center text-blue-800 mb-4">Student Attendance Tracker</h1>
+            <p class="text-center text-gray-600">Enter student attendance data to calculate and visualize percentages.</p>
+        </div>
+
+        <!-- Input Form Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div>
+                <label for="department" class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <input type="text" id="department" placeholder="e.g., CABM" class="input-field">
+            </div>
+            <div>
+                <label for="program" class="block text-sm font-medium text-gray-700 mb-1">Program</label>
+                <input type="text" id="program" placeholder="e.g., Accountancy" class="input-field">
+            </div>
+        </div>
+
+        <!-- Year Level Input Sections -->
+        <div class="space-y-8">
+            <!-- 1st Year -->
+            <div>
+                <h3 class="text-xl font-bold mb-4 text-gray-700">1st Year Students</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="total1st" class="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                        <input type="number" id="total1st" placeholder="Total 1st years" class="input-field">
+                    </div>
+                    <div>
+                        <label for="present1st" class="block text-sm font-medium text-gray-700 mb-1">Present</label>
+                        <input type="number" id="present1st" placeholder="Present 1st years" class="input-field">
+                    </div>
+                    <div>
+                        <label for="absent1st" class="block text-sm font-medium text-gray-700 mb-1">Absent</label>
+                        <input type="number" id="absent1st" placeholder="Absent 1st years" class="input-field">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2nd Year -->
+            <div>
+                <h3 class="text-xl font-bold mb-4 text-gray-700">2nd Year Students</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="total2nd" class="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                        <input type="number" id="total2nd" placeholder="Total 2nd years" class="input-field">
+                    </div>
+                    <div>
+                        <label for="present2nd" class="block text-sm font-medium text-gray-700 mb-1">Present</label>
+                        <input type="number" id="present2nd" placeholder="Present 2nd years" class="input-field">
+                    </div>
+                    <div>
+                        <label for="absent2nd" class="block text-sm font-medium text-gray-700 mb-1">Absent</label>
+                        <input type="number" id="absent2nd" placeholder="Absent 2nd years" class="input-field">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 3rd Year -->
+            <div>
+                <h3 class="text-xl font-bold mb-4 text-gray-700">3rd Year Students</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="total3rd" class="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                        <input type="number" id="total3rd" placeholder="Total 3rd years" class="input-field">
+                    </div>
+                    <div>
+                        <label for="present3rd" class="block text-sm font-medium text-gray-700 mb-1">Present</label>
+                        <input type="number" id="present3rd" placeholder="Present 3rd years" class="input-field">
+                    </div>
+                    <div>
+                        <label for="absent3rd" class="block text-sm font-medium text-gray-700 mb-1">Absent</label>
+                        <input type="number" id="absent3rd" placeholder="Absent 3rd years" class="input-field">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4th Year -->
+            <div>
+                <h3 class="text-xl font-bold mb-4 text-gray-700">4th Year Students</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="total4th" class="block text-sm font-medium text-gray-700 mb-1">Total</label>
+                        <input type="number" id="total4th" placeholder="Total 4th years" class="input-field">
+                    </div>
+                    <div>
+                        <label for="present4th" class="block text-sm font-medium text-gray-700 mb-1">Present</label>
+                        <input type="number" id="present4th" placeholder="Present 4th years" class="input-field">
+                    </div>
+                    <div>
+                        <label for="absent4th" class="block text-sm font-medium text-gray-700 mb-1">Absent</label>
+                        <input type="number" id="absent4th" placeholder="Absent 4th years" class="input-field">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col sm:flex-row gap-4 mb-8 mt-8">
+            <button id="showDataBtn" class="btn btn-primary flex-grow">Show Data</button>
+            <button id="exportBtn" class="btn btn-secondary flex-grow">Export as CSV</button>
+        </div>
+
+        <!-- Message/Error Display -->
+        <div id="message" class="text-center text-red-500 font-medium mb-4" style="display: none;"></div>
+        
+    </div>
+
+    <!-- The Modal Pop-up -->
+    <div id="resultsModal" class="modal hidden">
+        <div class="modal-content">
+            <span id="closeModalBtn" class="modal-close-btn">&times;</span>
+            <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Attendance Summary</h2>
+            <div id="chartsContainer" class="flex flex-wrap justify-center gap-12">
+                <!-- Pie charts will be injected here by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            const showDataBtn = document.getElementById('showDataBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const resultsModal = document.getElementById('resultsModal');
+            const messageDiv = document.getElementById('message');
+            const chartsContainer = document.getElementById('chartsContainer');
+            const departmentInput = document.getElementById('department');
+            const programInput = document.getElementById('program');
+
+            let pieCharts = {}; // Object to hold pie chart instances
+
+            // Function to display messages (errors or success)
+            const showMessage = (text, type = 'error') => {
+                messageDiv.textContent = text;
+                messageDiv.style.color = type === 'error' ? 'red' : 'green';
+                messageDiv.style.display = 'block';
+            };
+
+            // Function to create or update a pie chart
+            const updatePieChart = (year, total, present, absent) => {
+                const chartId = `pieChart${year}th`;
+                const canvas = document.createElement('canvas');
+                canvas.id = chartId;
+                canvas.className = 'w-[150px] h-[150px]';
+
+                // Clear the container before adding new charts
+                if (pieCharts[chartId]) {
+                    pieCharts[chartId].destroy();
+                }
+
+                // Append the canvas to the charts container
+                const chartWrapper = document.createElement('div');
+                chartWrapper.className = 'flex flex-col items-center';
+                
+                const title = document.createElement('h3');
+                title.className = 'text-lg font-semibold text-gray-700 mb-2 text-center';
+                title.textContent = `${year}st Year Students`;
+                chartWrapper.appendChild(title);
+                
+                const canvasContainer = document.createElement('div');
+                canvasContainer.className = 'chart-container';
+                canvasContainer.appendChild(canvas);
+                chartWrapper.appendChild(canvasContainer);
+
+                const stats = document.createElement('div');
+                stats.className = 'text-sm text-gray-600 mt-2';
+                stats.innerHTML = `
+                    <p>Total: ${total}</p>
+                    <p>Present: ${present} (${(total > 0 ? (present / total * 100).toFixed(2) : 0)}%)</p>
+                    <p>Absent: ${absent} (${(total > 0 ? (absent / total * 100).toFixed(2) : 0)}%)</p>
+                `;
+                chartWrapper.appendChild(stats);
+
+                chartsContainer.appendChild(chartWrapper);
+
+                const ctx = canvas.getContext('2d');
+                pieCharts[chartId] = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Present', 'Absent'],
+                        datasets: [{
+                            label: 'Attendance Percentage',
+                            data: [present, absent],
+                            backgroundColor: [
+                                'rgba(59, 130, 246, 0.8)',
+                                'rgba(239, 68, 68, 0.8)'
+                            ],
+                            borderColor: [
+                                'rgba(255, 255, 255, 1)',
+                                'rgba(255, 255, 255, 1)'
+                            ],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed !== null) {
+                                            const totalCount = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                            const percentage = (context.parsed / totalCount * 100).toFixed(2);
+                                            label += `${context.parsed} (${percentage}%)`;
+                                        }
+                                        return label;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            };
+            
+            // Define suffixes for each year to correctly match HTML IDs
+            const yearSuffixes = {
+                1: 'st',
+                2: 'nd',
+                3: 'rd',
+                4: 'th'
+            };
+
+            // Function to handle showing the data
+            const showData = () => {
+                messageDiv.style.display = 'none';
+                chartsContainer.innerHTML = ''; // Clear previous charts
+                
+                // Get all relevant input fields
+                const inputs = document.querySelectorAll('.input-field');
+                let firstEmptyInput = null;
+
+                // First, check for empty fields and add red border
+                inputs.forEach(input => {
+                    input.classList.remove('border-red-500');
+                    if (input.value.trim() === '') {
+                        input.classList.add('border-red-500');
+                        if (!firstEmptyInput) {
+                            firstEmptyInput = input;
+                        }
+                    }
+                });
+
+                if (firstEmptyInput) {
+                    showMessage('Please fill in all input fields.');
+                    firstEmptyInput.focus();
+                    return;
+                }
+                
+                // If all fields are filled, proceed with numerical validation
+                let isValid = true;
+                const yearLevels = [1, 2, 3, 4];
+                const yearData = [];
+
+                // Collect and validate data for each year level
+                yearLevels.forEach(year => {
+                    const suffix = yearSuffixes[year];
+                    const totalInput = document.getElementById(`total${year}${suffix}`);
+                    const presentInput = document.getElementById(`present${year}${suffix}`);
+                    const absentInput = document.getElementById(`absent${year}${suffix}`);
+                    
+                    const total = parseInt(totalInput.value);
+                    const present = parseInt(presentInput.value);
+                    const absent = parseInt(absentInput.value);
+                    
+                    if (total > 0 && present + absent !== total) {
+                        showMessage(`The sum of present and absent students for year ${year} must equal the total.`);
+                        isValid = false;
+                        return;
+                    }
+
+                    if (isNaN(total) || isNaN(present) || isNaN(absent) || total < 0 || present < 0 || absent < 0) {
+                        showMessage(`Please enter valid numbers for all fields.`);
+                        isValid = false;
+                        return;
+                    }
+                    
+                    yearData.push({ total, present, absent, year });
+                });
+
+                if (!isValid) {
+                    return; // Stop if any validation fails
+                }
+
+                if (yearData.every(d => d.total === 0)) {
+                    showMessage('Please enter at least one student data to show the charts.');
+                    return;
+                }
+
+                // If all validation passes, create charts and show the modal
+                yearData.forEach(data => {
+                    updatePieChart(data.year, data.total, data.present, data.absent);
+                });
+                resultsModal.classList.remove('hidden');
+            };
+
+            // Function to handle CSV export
+            const exportCsv = () => {
+                // First, check for empty fields
+                const inputs = document.querySelectorAll('.input-field');
+                let firstEmptyInput = null;
+                inputs.forEach(input => {
+                    input.classList.remove('border-red-500');
+                    if (input.value.trim() === '') {
+                        input.classList.add('border-red-500');
+                        if (!firstEmptyInput) {
+                            firstEmptyInput = input;
+                        }
+                    }
+                });
+
+                if (firstEmptyInput) {
+                    showMessage('Please fill in all input fields before exporting.');
+                    firstEmptyInput.focus();
+                    return;
+                }
+                
+                let isValid = true;
+                const yearLevels = [1, 2, 3, 4];
+                const yearData = [];
+
+                yearLevels.forEach(year => {
+                    const suffix = yearSuffixes[year];
+                    const totalInput = document.getElementById(`total${year}${suffix}`);
+                    const presentInput = document.getElementById(`present${year}${suffix}`);
+                    const absentInput = document.getElementById(`absent${year}${suffix}`);
+                    
+                    const total = parseInt(totalInput.value);
+                    const present = parseInt(presentInput.value);
+                    const absent = parseInt(absentInput.value);
+                    
+                    if (total > 0 && present + absent !== total) {
+                        showMessage(`The sum of present and absent students for year ${year} must equal the total.`);
+                        isValid = false;
+                        return;
+                    }
+
+                    if (isNaN(total) || isNaN(present) || isNaN(absent) || total < 0 || present < 0 || absent < 0) {
+                        showMessage(`Please enter valid numbers for all fields.`);
+                        isValid = false;
+                        return;
+                    }
+                    
+                    yearData.push({ total, present, absent, year });
+                });
+
+                if (!isValid) {
+                    return;
+                }
+
+                if (yearData.every(d => d.total === 0)) {
+                    showMessage('Please enter at least one student data to export.');
+                    return;
+                }
+                
+                const department = departmentInput.value || 'N/A';
+                const program = programInput.value || 'N/A';
+                let csvContent = "Department,Program,Year,Total Students,Present Students,Present Percentage,Absent Students,Absentee Percentage\n";
+
+                // Add data for each year level
+                yearData.forEach(data => {
+                    const presentPercentage = data.total > 0 ? ((data.present / data.total) * 100).toFixed(2) : 0;
+                    const absentPercentage = data.total > 0 ? ((data.absent / data.total) * 100).toFixed(2) : 0;
+                    csvContent += `${department},${program},Year ${data.year},${data.total},${data.present},"${presentPercentage}%",${data.absent},"${absentPercentage}%"\n`;
+                });
+
+                // Calculate overall totals
+                const totalPresent = yearData.reduce((sum, data) => sum + data.present, 0);
+                const totalAbsent = yearData.reduce((sum, data) => sum + data.absent, 0);
+                const grandTotal = yearData.reduce((sum, data) => sum + data.total, 0);
+                const overallPresentPercentage = grandTotal > 0 ? ((totalPresent / grandTotal) * 100).toFixed(2) : 0;
+                const overallAbsentPercentage = grandTotal > 0 ? ((totalAbsent / grandTotal) * 100).toFixed(2) : 0;
+
+                csvContent += `${department},${program},Overall,${grandTotal},${totalPresent},"${overallPresentPercentage}%",${totalAbsent},"${overallAbsentPercentage}%"\n`;
+
+                // Create a Blob and download link
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                if (link.download !== undefined) {
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", "attendance_report.csv");
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    showMessage('CSV exported successfully!', 'success');
+                } else {
+                    showMessage('Your browser does not support this export method.', 'error');
+                }
+            };
+
+            // Event listeners
+            showDataBtn.addEventListener('click', showData);
+            exportBtn.addEventListener('click', exportCsv);
+            closeModalBtn.addEventListener('click', () => {
+                resultsModal.classList.add('hidden');
+            });
+            window.addEventListener('click', (event) => {
+                if (event.target === resultsModal) {
+                    resultsModal.classList.add('hidden');
+                }
+            });
+        };
+    </script>
+</body>
+</html>

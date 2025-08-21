@@ -378,4 +378,151 @@
                         program: values[1],
                         year1: { total: year1Total, present: parseInt(values[3]), absent: parseInt(values[4]) },
                         year2: { total: year2Total, present: parseInt(values[6]), absent: parseInt(values[7]) },
-                        year3: { total: year3Total, present: parseI
+                        year3: { total: year3Total, present: parseInt(values[9]), absent: parseInt(values[10]) },
+                        year4: { total: year4Total, present: parseInt(values[12]), absent: parseInt(values[13]) },
+                        totalStudents: totalStudents
+                    });
+                } catch (e) {
+                    statusMessage.textContent = 'Error: Failed to parse data. Please ensure number columns contain valid numbers.';
+                    statusMessage.style.color = '#dc2626';
+                    return null;
+                }
+            }
+            
+            return parsedData;
+        };
+
+        // --- Handle File Upload ---
+        const handleFileLoad = (event) => {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            statusMessage.textContent = 'Reading file...';
+            statusMessage.style.color = '#4b5563';
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const text = e.target.result;
+                studentDataList = parseCsv(text);
+                
+                if (studentDataList && studentDataList.length > 0) {
+                    // Aggregate data for overall attendance
+                    overallAttendanceData = studentDataList.reduce((acc, current) => {
+                        acc.present += current.year1.present + current.year2.present + current.year3.present + current.year4.present;
+                        acc.absent += current.year1.absent + current.year2.absent + current.year3.absent + current.year4.absent;
+                        return acc;
+                    }, { present: 0, absent: 0 });
+
+                    // Aggregate data by department
+                    departments = studentDataList.reduce((acc, current) => {
+                        if (!acc[current.department]) {
+                            acc[current.department] = { totalStudents: 0, programs: [] };
+                        }
+                        acc[current.department].totalStudents += current.totalStudents;
+                        acc[current.department].programs.push(current);
+                        return acc;
+                    }, {});
+
+                    statusMessage.textContent = `File "${file.name}" loaded successfully. Found ${studentDataList.length} programs.`;
+                    statusMessage.style.color = '#10b981';
+                    
+                    renderProgramList(studentDataList);
+                    updateDepartmentCharts();
+                    
+                    noDataMessage.classList.add('hidden');
+                    chartContainer.classList.remove('hidden');
+
+                    // Automatically show the overall attendance chart by default
+                    updatePieChart('myPieChart', [overallAttendanceData.present, overallAttendanceData.absent], ['Present', 'Absent'], ['#2563eb', '#dc2626']);
+                    
+                    // Initialize the department slider
+                    departmentNames = Object.keys(departments);
+                    departmentSlider.max = departmentNames.length - 1;
+                    if (departmentNames.length > 0) {
+                        departmentSlider.value = 0;
+                        selectedDepartmentLabel.textContent = departmentNames[0];
+                        updateProgramDistributionChart(departmentNames[0]);
+                        programDistributionSection.classList.remove('hidden');
+                    }
+                } else if (studentDataList) {
+                    statusMessage.textContent = 'File loaded, but no program data was found.';
+                    statusMessage.style.color = '#dc2626';
+                    studentDataList = [];
+                    programListContainer.classList.add('hidden');
+                    noDataMessage.textContent = 'Please upload a CSV file to view the attendance charts.';
+                    noDataMessage.classList.remove('hidden');
+                    chartContainer.classList.add('hidden');
+                    updateDepartmentCharts();
+                    programDistributionSection.classList.add('hidden');
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        // --- Export to CSV Functionality ---
+        const exportToCsv = () => {
+            if (studentDataList.length === 0) {
+                const messageBox = document.createElement('div');
+                messageBox.textContent = 'No data to export. Please import a file first.';
+                messageBox.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000;';
+                document.body.appendChild(messageBox);
+                setTimeout(() => document.body.removeChild(messageBox), 3000);
+                return;
+            }
+
+            const headers = [
+                'Department', 'Program',
+                '1st Year Total', '1st Year Present', '1st Year Absent',
+                '2nd Year Total', '2nd Year Present', '2nd Year Absent',
+                '3rd Year Total', '3rd Year Present', '3rd Year Absent',
+                '4th Year Total', '4th Year Present', '4th Year Absent'
+            ];
+            
+            const csvRows = studentDataList.map(data => {
+                return [
+                    data.department || 'N/A', data.program || 'N/A',
+                    data.year1.total, data.year1.present, data.year1.absent,
+                    data.year2.total, data.year2.present, data.year2.absent,
+                    data.year3.total, data.year3.present, data.year3.absent,
+                    data.year4.total, data.year4.present, data.year4.absent
+                ].join(',');
+            });
+
+            const csvContent = headers.join(',') + '\n' + csvRows.join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'student_data.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            } else {
+                const messageBox = document.createElement('div');
+                messageBox.textContent = 'Your browser does not support downloading CSV files directly.';
+                messageBox.style.cssText = 'position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000;';
+                document.body.appendChild(messageBox);
+                setTimeout(() => document.body.removeChild(messageBox), 3000);
+            }
+        };
+
+        // --- Event Listeners ---
+        csvFile.addEventListener('change', handleFileLoad);
+        exportCsvBtn.addEventListener('click', exportToCsv);
+        departmentSlider.addEventListener('input', handleSliderInput);
+
+        // Initial state on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            updateAttendanceCharts(null);
+            updateDepartmentCharts();
+        });
+    </script>
+</body>
+</html>

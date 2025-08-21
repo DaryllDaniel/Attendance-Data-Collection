@@ -103,7 +103,8 @@
                         <label id="selectedDepartmentLabel" class="font-bold text-blue-600 text-center block mb-2">Select a Department</label>
                         <input type="range" id="departmentSlider" min="0" max="0" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
                     </div>
-                    <div class="w-full h-auto max-w-[250px] mx-auto">
+                    <!-- This container is now scrollable for long program lists -->
+                    <div class="w-full h-auto max-w-[250px] mx-auto max-h-[400px] overflow-y-auto">
                         <canvas id="programDistributionChart"></canvas>
                     </div>
                 </div>
@@ -258,9 +259,19 @@
             const programLabels = programsInDept.map(p => p.program);
             const programData = programsInDept.map(p => p.totalStudents);
             const programColors = programLabels.map((_, i) => `hsl(${i * 360 / programLabels.length}, 70%, 50%)`);
+
+            // Calculate total students for percentage calculation
+            const totalStudents = programData.reduce((sum, current) => sum + current, 0);
+
+            // Create new labels with name, count, and percentage
+            const newLabels = programLabels.map((name, index) => {
+                const count = programData[index];
+                const percentage = totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0;
+                return `${name}: ${count} (${percentage}%)`;
+            });
             
             programDistributionSection.classList.remove('hidden');
-            updatePieChart('programDistributionChart', programData, programLabels, programColors);
+            updatePieChart('programDistributionChart', programData, newLabels, programColors);
         };
         
         // --- Render Program List ---

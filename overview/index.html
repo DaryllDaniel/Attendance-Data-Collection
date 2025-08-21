@@ -235,7 +235,18 @@
 
             if (departmentNames.length > 1) {
                 departmentDistributionChartContainer.classList.remove('hidden');
-                updatePieChart('departmentDistributionChart', departmentData, departmentNames, departmentColors);
+                
+                // Calculate total students to get percentages
+                const totalStudents = departmentData.reduce((sum, current) => sum + current, 0);
+
+                // Create new labels with name, count, and percentage
+                const newLabels = departmentNames.map((name, index) => {
+                    const count = departmentData[index];
+                    const percentage = totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0;
+                    return `${name}: ${count} (${percentage}%)`;
+                });
+
+                updatePieChart('departmentDistributionChart', departmentData, newLabels, departmentColors);
             } else {
                 departmentDistributionChartContainer.classList.add('hidden');
             }

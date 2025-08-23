@@ -11,8 +11,8 @@
     <!-- Firebase SDKs for Cloud Persistence -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Expose Firebase services to the global scope
         window.firebase = {
@@ -20,24 +20,25 @@
             getAuth,
             signInAnonymously,
             onAuthStateChanged,
+            signInWithCustomToken,
             getFirestore,
             doc,
-            onSnapshot
+            onSnapshot,
+            collection,
+            getDocs
         };
     </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
-            /* Added background image and styling */
             background-image: url('https://scontent.fcrk1-1.fna.fbcdn.net/v/t39.30808-6/534829113_1219906786818614_3623306942044619088_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=IVr9Yr1-pvUQ7kNvwFa9iO5&_nc_oc=AdntxIkfqY4bkAXBlJJlzddtb7L6hdtB7b9Szq2OuBkDf7fySj9CjncTopvIdlkE_aA&_nc_zt=23&_nc_ht=scontent.fcrk1-1.fna&_nc_gid=wsNnun-HKCpyMJFkIDXHpA&oh=00_AfUlrYAo7YO63AptckNhX1w5AiCyZbvdvxxE5l_uo6vsQw&oe=68AF8B73');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
-            position: relative; /* Needed for the overlay pseudo-element */
+            position: relative;
         }
         
-        /* Blue overlay with 30% opacity */
         body::before {
             content: '';
             position: absolute;
@@ -45,18 +46,16 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 255, 0.3); /* Blue with 30% opacity */
-            z-index: 1; /* Place below the content */
+            background-color: rgba(0, 0, 255, 0.3);
+            z-index: 1;
         }
 
-        /* Fix for charts not appearing */
         .chart-container {
             position: relative;
-            height: 300px; /* Explicit height for charts */
+            height: 300px;
             width: 100%;
         }
 
-        /* Styling for the top-left image */
         #top-left-logo {
             position: absolute;
             top: 1rem;
@@ -67,12 +66,54 @@
             border-radius: 0.5rem;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+
+        /* Styles for the new event selector dropdown */
+        .event-selector-container {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        
+        #event-selector {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #d1d5db;
+            background-color: #fff;
+            color: #374151;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            max-height: 180px; /* Adjust based on desired number of visible options (approx 5) */
+            overflow-y: auto;
+        }
+        
+        #event-selector option {
+            padding: 0.5rem;
+        }
+
+        @media (min-width: 640px) {
+            .event-selector-container {
+                flex-direction: row;
+                align-items: center;
+                gap: 0.5rem;
+            }
+        }
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-4">
 
-    <!-- Top-left logo added here -->
+    <!-- Top-left logo -->
     <img id="top-left-logo" src="https://scontent.fcrk1-2.fna.fbcdn.net/v/t39.30808-6/481256091_1075839891225305_8701060058928039111_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=OCjjkE8jx7IQ7kNvwEp79Cp&_nc_oc=AdnDPmGq-xwFdLhQcze1O-nZmR0e5Nr8AX3fDmfdOLUPXALB4MNg7J65H2Q8TE5sY-4&_nc_zt=23&_nc_ht=scontent.fcrk1-2.fna&_nc_gid=nFjzVEKrI6WrhINW3zz39w&oh=00_AfVGG0LH9XXR_Q2o-1bm8ODj0HrJU7A7o6eu4L5YYjY7Cw&oe=68AFB084" alt="Logo">
+
+    <!-- New Event Selector Dropdown -->
+    <div class="event-selector-container">
+        <label for="event-selector" class="text-white font-medium text-sm drop-shadow-md">Load an Event:</label>
+        <select id="event-selector">
+            <option value="">Loading events...</option>
+        </select>
+    </div>
 
     <!-- Separate div for title and description -->
     <div class="text-center mb-8 px-4 z-20">
@@ -81,7 +122,7 @@
     </div>
 
     <!-- Main Application Container -->
-    <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col gap-8 z-20">
+    <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col gap-8 z-20 overflow-auto">
 
         <!-- Data Display and Controls Section -->
         <div class="flex-1">
@@ -129,8 +170,7 @@
         let db;
         let auth;
         let userId;
-        const COLLECTION_NAME = "studentData";
-        const DOCUMENT_ID = "mainData";
+        const EVENTS_COLLECTION = "events";
 
         // --- DOM Element References ---
         const statusMessage = document.getElementById('status-message');
@@ -138,6 +178,7 @@
         const chartsPlaceholder = document.getElementById('charts-placeholder');
         const departmentSlider = document.getElementById('department-slider');
         const departmentNameSpan = document.getElementById('department-name');
+        const eventSelector = document.getElementById('event-selector');
 
         let studentData = [];
         let departments = []; // Store the list of departments
@@ -147,87 +188,193 @@
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
             try {
-                // Use the Firebase config provided by the user.
-                const firebaseConfig = {
-                    apiKey: "AIzaSyDCRT5OxfwUD25pS6igy8v3xYlaGmMXK_0",
-                    authDomain: "event-calendar-prototype-b11b6.firebaseapp.com",
-                    projectId: "event-calendar-prototype-b11b6",
-                    storageBucket: "event-calendar-prototype-b11b6.firebasestorage.app",
-                    messagingSenderId: "532386656284",
-                    appId: "1:532386656284:web:fd4533fb0f54b198752fd9",
-                    measurementId: "G-J10NDCD212"
-                };
-                
-                // Initialize the Firebase app with the hardcoded config
+                // IMPORTANT: The following variables are provided by the hosting environment.
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
                 const app = window.firebase.initializeApp(firebaseConfig);
                 auth = window.firebase.getAuth(app);
                 db = window.firebase.getFirestore(app);
 
-                // Use anonymous sign-in, which does not require a custom token.
-                await window.firebase.signInAnonymously(auth);
+                // Authenticate the user using the provided token or anonymously
+                if (initialAuthToken) {
+                    await window.firebase.signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await window.firebase.signInAnonymously(auth);
+                }
+                
+                // Set the user ID for Firestore operations
+                userId = auth.currentUser.uid;
+                
+                statusMessage.textContent = "Connected to the cloud. Loading events...";
+                statusMessage.classList.remove('hidden');
+                statusMessage.classList.add('bg-gray-100', 'text-gray-500');
 
-                // Listen for auth state changes to get the user ID
-                window.firebase.onAuthStateChanged(auth, (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        statusMessage.textContent = "Connected to cloud. Retrieving data...";
-                        statusMessage.style.color = '#4b5563';
-                        fetchDataFromFirestore();
-                    } else {
-                        statusMessage.textContent = "Failed to connect to the cloud.";
-                        statusMessage.style.color = '#dc2626';
-                    }
-                });
+                fetchEventsAndInitialData();
+
             } catch (error) {
                 console.error("Firebase setup failed:", error);
                 statusMessage.textContent = "Error setting up cloud connection. Please try again later.";
-                statusMessage.style.color = '#dc2626';
+                statusMessage.classList.remove('hidden');
+                statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
+                statusMessage.classList.add('text-red-600', 'bg-red-100');
             }
         };
 
-        // --- Fetch Data from Firestore ---
-        const fetchDataFromFirestore = () => {
+        // --- Fetch List of Events from Firestore ---
+        const fetchEventsAndInitialData = async () => {
             if (!db || !userId) {
-                statusMessage.textContent = "Cloud connection not ready. Data cannot be retrieved.";
-                statusMessage.style.color = '#dc2626';
+                statusMessage.textContent = "Cloud connection not ready. Events cannot be retrieved.";
+                statusMessage.classList.remove('hidden');
+                statusMessage.classList.add('text-red-600', 'bg-red-100');
                 return;
             }
 
-            // Reference the correct Firestore path using the user's UID
-            const docRef = window.firebase.doc(db, `artifacts/event-calendar-prototype-b11b6/users/${userId}/${COLLECTION_NAME}`, DOCUMENT_ID);
+            try {
+                const eventsRef = window.firebase.collection(db, `artifacts/${auth.app.options.projectId}/users/${userId}/${EVENTS_COLLECTION}`);
+                const querySnapshot = await window.firebase.getDocs(eventsRef);
 
-            // Use onSnapshot for real-time data listening
-            window.firebase.onSnapshot(docRef, (docSnap) => {
+                const eventNames = querySnapshot.docs.map(doc => doc.id);
+                
+                // Clear and populate the event selector dropdown
+                eventSelector.innerHTML = '';
+                if (eventNames.length > 0) {
+                    eventNames.forEach(name => {
+                        const option = document.createElement('option');
+                        option.value = name;
+                        option.textContent = name;
+                        eventSelector.appendChild(option);
+                    });
+                    eventSelector.value = eventNames[0]; // Select the first event by default
+                    loadAndRenderData(eventNames[0]);
+                } else {
+                    const option = document.createElement('option');
+                    option.textContent = "No events found";
+                    option.value = "";
+                    eventSelector.appendChild(option);
+                    statusMessage.textContent = "No events found in the cloud.";
+                    statusMessage.classList.remove('hidden');
+                    statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
+                    statusMessage.classList.add('text-yellow-600', 'bg-yellow-100');
+                    // Hide charts and slider if no data
+                    departmentProgramBarChartsContainer.classList.add('hidden');
+                    departmentSlider.parentElement.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error("Error fetching events:", error);
+                statusMessage.textContent = "Error loading events. Please try again.";
+                statusMessage.classList.remove('hidden');
+                statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
+                statusMessage.classList.add('text-red-600', 'bg-red-100');
+            }
+        };
+
+        // --- Load and Render Data for a Specific Event ---
+        const loadAndRenderData = async (eventName) => {
+            if (!eventName) {
+                statusMessage.textContent = "Please select an event to view.";
+                statusMessage.classList.remove('hidden');
+                statusMessage.classList.add('text-yellow-600', 'bg-yellow-100');
+                return;
+            }
+
+            statusMessage.textContent = `Loading data for event "${eventName}"...`;
+            statusMessage.classList.remove('hidden');
+            statusMessage.classList.remove('text-yellow-600', 'bg-yellow-100');
+            statusMessage.classList.add('text-gray-500', 'bg-gray-100');
+
+            try {
+                const docRef = window.firebase.doc(db, `artifacts/${auth.app.options.projectId}/users/${userId}/${EVENTS_COLLECTION}`, eventName);
+                const docSnap = await window.firebase.getDoc(docRef);
+
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    try {
-                        studentData = JSON.parse(data.studentData);
-                        if (studentData.length > 0) {
-                            statusMessage.textContent = "Data retrieved successfully!";
-                            statusMessage.style.color = '#10b981';
-                            renderOverallBarChart(studentData);
-                            initializeDepartmentSlider(studentData);
-                        } else {
-                            statusMessage.textContent = "No student data found in the cloud.";
-                            statusMessage.style.color = '#dc2626';
-                        }
-                    } catch (e) {
-                        console.error("Error parsing data from Firestore:", e);
-                        statusMessage.textContent = "Error parsing data from the cloud.";
-                        statusMessage.style.color = '#dc2626';
+                    const rawData = JSON.parse(data.data);
+                    
+                    // Convert raw CSV-like data to the structured format for charts
+                    studentData = parseRawData(rawData);
+                    
+                    if (studentData.length > 0) {
+                        statusMessage.textContent = `Data for "${eventName}" retrieved successfully!`;
+                        statusMessage.classList.remove('hidden');
+                        statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
+                        statusMessage.classList.add('text-green-600', 'bg-green-100');
+
+                        departmentProgramBarChartsContainer.classList.remove('hidden');
+                        departmentSlider.parentElement.classList.remove('hidden');
+
+                        renderOverallBarChart(studentData);
+                        initializeDepartmentSlider(studentData);
+                    } else {
+                        statusMessage.textContent = `Event "${eventName}" contains no valid data.`;
+                        statusMessage.classList.remove('hidden');
+                        statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
+                        statusMessage.classList.add('text-yellow-600', 'bg-yellow-100');
+                        
+                        // Hide charts and slider if no data
+                        departmentProgramBarChartsContainer.classList.add('hidden');
+                        departmentSlider.parentElement.classList.add('hidden');
                     }
                 } else {
-                    statusMessage.textContent = "No data found for this user in the cloud.";
-                    statusMessage.style.color = '#dc2626';
-                    console.log("No such document!");
+                    statusMessage.textContent = `No data found for event "${eventName}".`;
+                    statusMessage.classList.remove('hidden');
+                    statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
+                    statusMessage.classList.add('text-yellow-600', 'bg-yellow-100');
+                    
+                    // Hide charts and slider if no data
+                    departmentProgramBarChartsContainer.classList.add('hidden');
+                    departmentSlider.parentElement.classList.add('hidden');
                 }
-            }, (error) => {
-                console.error("Error fetching document:", error);
-                statusMessage.textContent = "Error fetching data from the cloud. Please try again.";
-                statusMessage.style.color = '#dc2626';
-            });
+            } catch (e) {
+                console.error("Error loading data from event:", e);
+                statusMessage.textContent = "Error loading data from the cloud.";
+                statusMessage.classList.remove('hidden');
+                statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
+                statusMessage.classList.add('text-red-600', 'bg-red-100');
+            }
         };
-        
+
+        // --- Utility function to parse raw CSV data into a structured format ---
+        const parseRawData = (rows) => {
+            const data = [];
+            if (rows.length < 2) return data;
+            
+            const headers = rows[0];
+            const dataRows = rows.slice(1);
+            
+            dataRows.forEach(row => {
+                // Ensure row has at least 15 columns as per the CSV structure
+                if (row.length >= 15 && row[0] && row[1]) {
+                    data.push({
+                        department: row[0].trim(),
+                        program: row[1].trim(),
+                        year1: {
+                            total: parseInt(row[2]) || 0,
+                            present: parseInt(row[3]) || 0,
+                            absent: parseInt(row[4]) || 0
+                        },
+                        year2: {
+                            total: parseInt(row[5]) || 0,
+                            present: parseInt(row[6]) || 0,
+                            absent: parseInt(row[7]) || 0
+                        },
+                        year3: {
+                            total: parseInt(row[8]) || 0,
+                            present: parseInt(row[9]) || 0,
+                            absent: parseInt(row[10]) || 0
+                        },
+                        year4: {
+                            total: parseInt(row[11]) || 0,
+                            present: parseInt(row[12]) || 0,
+                            absent: parseInt(row[13]) || 0
+                        }
+                    });
+                }
+            });
+            return data;
+        };
+
         // --- Initialize the Department Slider ---
         const initializeDepartmentSlider = (data) => {
             departments = [...new Set(data.map(row => row.department))].sort();
@@ -249,12 +396,12 @@
             }
 
             // Add event listener to handle slider changes
-            departmentSlider.addEventListener('input', (event) => {
+            departmentSlider.oninput = (event) => {
                 const selectedIndex = parseInt(event.target.value);
                 const selectedDepartment = departments[selectedIndex];
                 departmentNameSpan.textContent = selectedDepartment;
                 renderDepartmentProgramCharts(data, selectedDepartment);
-            });
+            };
         };
 
         // --- Render a single Department's Program Bar Chart AND overall bar chart if needed ---
@@ -489,6 +636,12 @@
             });
         };
         
+        // --- Event Listener for the Event Selector Dropdown ---
+        eventSelector.addEventListener('change', (event) => {
+            const selectedEventName = event.target.value;
+            loadAndRenderData(selectedEventName);
+        });
+
         // --- Initial App Setup ---
         document.addEventListener('DOMContentLoaded', () => {
             setupFirebase();

@@ -180,6 +180,18 @@
 
         <!-- Department and Program Charts -->
         <div id="department-charts-container" class="flex flex-col justify-center items-center gap-8 mt-6 hidden">
+            <!-- Department Summary -->
+            <div id="department-summary" class="w-full md:w-1/2 flex justify-around p-4 rounded-lg bg-gray-100 shadow-md">
+                <p class="text-lg text-gray-800 font-semibold flex items-center gap-2">
+                    <span class="w-4 h-4 rounded-full bg-blue-500"></span>
+                    Present: <span id="total-present" class="text-xl font-bold text-blue-700">0</span>
+                </p>
+                <p class="text-lg text-gray-800 font-semibold flex items-center gap-2">
+                    <span class="w-4 h-4 rounded-full bg-red-500"></span>
+                    Absent: <span id="total-absent" class="text-xl font-bold text-red-700">0</span>
+                </p>
+            </div>
+
             <!-- Department Attendance Bar Chart -->
             <div class="w-full md:w-1/2 mx-auto">
                 <div class="flex justify-center items-center h-64 md:h-80">
@@ -190,7 +202,15 @@
             <!-- Program Charts Container -->
             <div class="w-full">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Programs</h2>
-                <div id="program-charts-container" class="grid grid-cols-1 sm:grid-cols-2 gap-8"></div>
+                <!-- Removed the grid layout -->
+                <div id="program-charts-container" class="flex flex-col items-center gap-8">
+                    <!-- This will now be a single chart for the whole department -->
+                    <div id="department-programs-chart-container" class="w-full md:w-1/2 mx-auto">
+                        <div class="flex justify-center items-center h-64 md:h-80">
+                            <canvas id="departmentProgramsChart" class="max-h-full max-w-full"></canvas>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -221,7 +241,7 @@
         let aggregatedData = null;
         let overallPieChart = null;
         let departmentYearChart = null;
-        let programCharts = {}; // Stores all program chart instances
+        let departmentProgramsChart = null; // New chart instance for department programs
         const CHART_COLORS = ['#3B82F6', '#EF4444']; // Blue for Present, Red for Absent
         const YEAR_COLORS = ['#3B82F6', '#2563EB', '#1D4ED8', '#1E40AF']; // Different shades of blue
         
@@ -242,7 +262,9 @@
         const departmentPrevBtn = document.getElementById('department-prev');
         const departmentNextBtn = document.getElementById('department-next');
         const overallPieChartCanvas = document.getElementById('overallPieChart');
-        const programChartsContainer = document.getElementById('program-charts-container');
+        const departmentProgramsChartCanvas = document.getElementById('departmentProgramsChart');
+        const totalPresentSpan = document.getElementById('total-present');
+        const totalAbsentSpan = document.getElementById('total-absent');
 
         // --- Event Listeners ---
         eventSelector.addEventListener('change', (e) => {
@@ -512,13 +534,17 @@
 
             // Destroy previous charts
             if (departmentYearChart) departmentYearChart.destroy();
+            if (departmentProgramsChart) departmentProgramsChart.destroy();
             
-            // Clear and destroy previous program charts
-            programChartsContainer.querySelectorAll('canvas').forEach(canvas => canvas.remove());
-            Object.values(programCharts).forEach(chart => chart.destroy());
-            programCharts = {};
+            // Update the summary numbers
+            const totalPresent = departmentData.present.reduce((sum, current) => sum + current, 0);
+            const totalAbsent = departmentData.absent.reduce((sum, current) => sum + current, 0);
+            totalPresentSpan.textContent = totalPresent;
+            totalAbsentSpan.textContent = totalAbsent;
 
             const yearLabels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+
+            // Draw Department Year Chart
             const departmentCtx = document.getElementById('departmentYearChart').getContext('2d');
             departmentYearChart = new Chart(departmentCtx, {
                 type: 'bar',
@@ -562,74 +588,55 @@
                 }
             });
 
-            // Draw a separate horizontal bar chart for each program
-            const programs = Object.keys(departmentData.programs).sort();
-            programs.forEach(programName => {
-                const programData = departmentData.programs[programName];
-
-                // Create a new div and canvas for the chart
-                const chartDiv = document.createElement('div');
-                chartDiv.classList.add('w-full', 'mb-6');
-                const chartCanvas = document.createElement('canvas');
-                chartCanvas.id = `chart-${programName.replace(/\s/g, '-')}`;
-                chartDiv.appendChild(chartCanvas);
-                programChartsContainer.appendChild(chartDiv);
-
-                // Create the horizontal stacked bar chart
-                const programCtx = chartCanvas.getContext('2d');
-                const newChart = new Chart(programCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Present', 'Absent'],
-                        datasets: yearLabels.map((year, i) => ({
-                            label: `${year} Students`,
-                            data: [programData.present[i], programData.absent[i]],
-                            backgroundColor: YEAR_COLORS[i],
-                            stack: 'year-stack'
-                        }))
-                    },
-                    options: {
-                        indexAxis: 'y', // This makes the bar chart horizontal
-                        responsive: true,
-                        scales: {
-                            x: {
-                                stacked: true,
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Number of Students'
-                                },
-                                ticks: {
-                                    stepSize: 25,
-                                    callback: function(value) { return value; }
-                                }
-                            },
-                            y: {
-                                stacked: true,
-                                grid: { display: false }
-                            }
+            // Draw Department Programs Chart (single vertical stacked bar chart)
+            const programLabels = Object.keys(departmentData.programs).sort();
+            const programPresentData = programLabels.map(p => departmentData.programs[p].present.reduce((sum, current) => sum + current, 0));
+            const programAbsentData = programLabels.map(p => departmentData.programs[p].absent.reduce((sum, current) => sum + current, 0));
+            
+            const programsCtx = departmentProgramsChartCanvas.getContext('2d');
+            departmentProgramsChart = new Chart(programsCtx, {
+                type: 'bar',
+                data: {
+                    labels: programLabels,
+                    datasets: [
+                        {
+                            label: 'Present',
+                            data: programPresentData,
+                            backgroundColor: CHART_COLORS[0]
                         },
-                        plugins: {
-                            legend: { position: 'top' },
+                        {
+                            label: 'Absent',
+                            data: programAbsentData,
+                            backgroundColor: CHART_COLORS[1]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            beginAtZero: true,
                             title: {
                                 display: true,
-                                text: `Attendance for ${programName}`,
-                                font: { size: 14, weight: 'bold' },
-                                color: '#1f2937'
-                            },
-                            datalabels: {
-                                color: '#fff',
-                                font: {
-                                    weight: 'bold'
-                                },
-                                formatter: (value, context) => {
-                                    return value > 0 ? value : '';
-                                }
+                                text: 'Number of Students'
                             }
+                        },
+                        y: {
+                            stacked: true,
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        title: {
+                            display: true,
+                            text: `Attendance by Program for ${departmentName}`,
+                            font: { size: 14, weight: 'bold' },
+                            color: '#1f2937'
                         }
                     }
-                });
-                programCharts[programName] = newChart;
+                }
             });
         };
 
@@ -663,7 +670,7 @@
                 }
             });
 
-            // Update charts
+            // Update charts and summary
             drawDepartmentAndProgramCharts(departmentName, aggregatedData);
         };
         

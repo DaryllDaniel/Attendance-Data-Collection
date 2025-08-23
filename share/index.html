@@ -29,25 +29,59 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
+            /* Added background image and styling */
+            background-image: url('https://scontent.fcrk1-1.fna.fbcdn.net/v/t39.30808-6/534829113_1219906786818614_3623306942044619088_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=IVr9Yr1-pvUQ7kNvwFa9iO5&_nc_oc=AdntxIkfqY4bkAXBlJJlzddtb7L6hdtB7b9Szq2OuBkDf7fySj9CjncTopvIdlkE_aA&_nc_zt=23&_nc_ht=scontent.fcrk1-1.fna&_nc_gid=wsNnun-HKCpyMJFkIDXHpA&oh=00_AfUlrYAo7YO63AptckNhX1w5AiCyZbvdvxxE5l_uo6vsQw&oe=68AF8B73');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            position: relative; /* Needed for the overlay pseudo-element */
         }
+        
+        /* Blue overlay with 30% opacity */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 255, 0.3); /* Blue with 30% opacity */
+            z-index: 1; /* Place below the content */
+        }
+
         /* Fix for charts not appearing */
         .chart-container {
             position: relative;
             height: 300px; /* Explicit height for charts */
             width: 100%;
         }
+
+        /* Styling for the top-left image */
+        #top-left-logo {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            z-index: 10;
+            width: 100px;
+            height: auto;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
-<body class="bg-gray-100 flex flex-col items-center min-h-screen p-4">
+<body class="flex flex-col items-center min-h-screen p-4">
+
+    <!-- Top-left logo added here -->
+    <img id="top-left-logo" src="https://scontent.fcrk1-2.fna.fbcdn.net/v/t39.30808-6/481256091_1075839891225305_8701060058928039111_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=OCjjkE8jx7IQ7kNvwEp79Cp&_nc_oc=AdnDPmGq-xwFdLhQcze1O-nZmR0e5Nr8AX3fDmfdOLUPXALB4MNg7J65H2Q8TE5sY-4&_nc_zt=23&_nc_ht=scontent.fcrk1-2.fna&_nc_gid=nFjzVEKrI6WrhINW3zz39w&oh=00_AfVGG0LH9XXR_Q2o-1bm8ODj0HrJU7A7o6eu4L5YYjY7Cw&oe=68AFB084" alt="Logo">
 
     <!-- Separate div for title and description -->
-    <div class="text-center mb-8 px-4">
-        <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800 mb-2">Student Data Viewer</h1>
-        <p class="text-gray-600">Data retrieved successfully!</p>
+    <div class="text-center mb-8 px-4 z-20">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-2 drop-shadow-lg">Student Data Viewer</h1>
+        <p class="text-gray-200 drop-shadow-md">Data retrieved successfully!</p>
     </div>
 
     <!-- Main Application Container -->
-    <div class="bg-white p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col gap-8">
+    <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col gap-8 z-20">
 
         <!-- Data Display and Controls Section -->
         <div class="flex-1">
@@ -58,11 +92,11 @@
         </div>
 
         <!-- Chart Section -->
-        <div class="flex-1 bg-gray-50 p-6 rounded-xl shadow-inner w-full">
+        <div class="flex-1 bg-gray-50 bg-opacity-90 p-6 rounded-xl shadow-inner w-full">
             <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Department and Program</h2>
             
             <!-- Overall Attendance Bar Chart -->
-            <div class="p-4 bg-white rounded-lg shadow-md mb-6 w-full">
+            <div class="p-4 bg-white bg-opacity-90 rounded-lg shadow-md mb-6 w-full">
                 <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Overall Attendance Summary</h3>
                 <div class="chart-container">
                     <canvas id="overall-bar-chart"></canvas>
@@ -72,6 +106,11 @@
             <!-- Department and Program Pie Charts Container -->
             <div id="pie-charts-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full h-auto mb-6">
                 <p id="pie-charts-placeholder" class="text-gray-500 text-center col-span-full">Charts will appear here after data is loaded.</p>
+            </div>
+            
+            <!-- Program Bar Charts Container (Re-added) -->
+            <div id="program-bar-charts-container" class="flex flex-col gap-8 w-full h-auto">
+                <p id="program-bar-charts-placeholder" class="text-gray-500 text-center hidden">Program charts will appear here...</p>
             </div>
 
         </div>
@@ -90,6 +129,7 @@
         const statusMessage = document.getElementById('status-message');
         const pieChartsContainer = document.getElementById('pie-charts-container');
         const pieChartsPlaceholder = document.getElementById('pie-charts-placeholder');
+        const programBarChartsContainer = document.getElementById('program-bar-charts-container');
 
         let studentData = [];
         let chartInstances = {}; // Combined object to store all chart instances
@@ -157,6 +197,7 @@
                             statusMessage.textContent = "Data retrieved successfully!";
                             statusMessage.style.color = '#10b981';
                             renderPieCharts(studentData);
+                            renderProgramBarCharts(studentData);
                             renderOverallBarChart(studentData);
                         } else {
                             statusMessage.textContent = "No student data found in the cloud.";
@@ -206,7 +247,7 @@
                 
                 // Create pie chart for the department's overall attendance
                 const deptChartDiv = document.createElement('div');
-                deptChartDiv.className = 'p-4 bg-white rounded-lg shadow-md';
+                deptChartDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md';
                 const heading = document.createElement('h3');
                 heading.className = 'font-semibold text-center text-lg mb-2 text-gray-700';
                 heading.textContent = departmentName;
@@ -226,7 +267,7 @@
                 // If a department has multiple programs, create a program distribution pie chart
                 if (deptData.programs.length > 1) {
                     const progDistChartDiv = document.createElement('div');
-                    progDistChartDiv.className = 'p-4 bg-white rounded-lg shadow-md';
+                    progDistChartDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md';
                     const progDistHeading = document.createElement('h3');
                     progDistHeading.className = 'font-semibold text-center text-lg mb-2 text-gray-700';
                     progDistHeading.textContent = `${departmentName} Program Distribution`;
@@ -356,6 +397,128 @@
             chartInstances[canvasId] = chart;
         };
 
+
+        // --- Render Program Bar Charts and Multi-Program Pie Charts ---
+        const renderProgramBarCharts = (data) => {
+            programBarChartsContainer.innerHTML = ''; // Clear previous charts
+            
+            // Group data by department
+            const groupedData = data.reduce((acc, row) => {
+                if (!acc[row.department]) {
+                    acc[row.department] = [];
+                }
+                const totalPresent = row.year1.present + row.year2.present + row.year3.present + row.year4.present;
+                const totalAbsent = row.year1.absent + row.year2.absent + row.year3.absent + row.year4.absent;
+                const total = totalPresent + totalAbsent;
+                acc[row.department].push({
+                    program: row.program,
+                    present: totalPresent,
+                    absent: totalAbsent,
+                    total: total
+                });
+                return acc;
+            }, {});
+            
+            // Loop through each department and its programs
+            Object.keys(groupedData).forEach(departmentName => {
+                const departmentPrograms = groupedData[departmentName];
+                const deptProgramsDiv = document.createElement('div');
+                deptProgramsDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md w-full';
+
+                const deptTitle = document.createElement('h3');
+                deptTitle.className = 'font-bold text-xl text-blue-800 mb-4 text-center';
+                deptTitle.textContent = `${departmentName} Programs`;
+                deptProgramsDiv.appendChild(deptTitle);
+
+                const programChartGrid = document.createElement('div');
+                programChartGrid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6';
+                
+                departmentPrograms.forEach(program => {
+                    const programChartDiv = document.createElement('div');
+                    programChartDiv.className = 'p-4 bg-gray-50 bg-opacity-90 rounded-lg shadow-sm';
+                    
+                    const heading = document.createElement('h4');
+                    heading.className = 'font-semibold text-center text-md mb-2 text-gray-700';
+                    heading.textContent = program.program;
+                    
+                    const chartContainer = document.createElement('div');
+                    chartContainer.className = 'chart-container';
+                    const canvas = document.createElement('canvas');
+                    canvas.id = `prog-bar-chart-${program.program.replace(/[^a-zA-Z0-9]/g, '')}`;
+                    
+                    chartContainer.appendChild(canvas);
+                    programChartDiv.appendChild(heading);
+                    programChartDiv.appendChild(chartContainer);
+                    programChartGrid.appendChild(programChartDiv);
+
+                    updateProgramBarChart(canvas.id, program.present, program.absent, program.total);
+                });
+
+                deptProgramsDiv.appendChild(programChartGrid);
+                programBarChartsContainer.appendChild(deptProgramsDiv);
+            });
+        };
+        
+        // --- Helper function to create/update a bar chart with percentages ---
+        const updateProgramBarChart = (canvasId, presentCount, absentCount, totalCount) => {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error(`Canvas element with ID '${canvasId}' not found.`);
+                return;
+            }
+
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy();
+            }
+
+            const chart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: ['Present', 'Absent', 'Total'],
+                    datasets: [{
+                        label: 'Attendance',
+                        data: [presentCount, absentCount, totalCount],
+                        backgroundColor: ['#2563eb', '#dc2626', '#16a34a'],
+                        borderColor: ['#1e40af', '#b91c1c', '#15803d'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Students'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    const value = context.raw;
+                                    const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
+                                    const percentage = (value / total) * 100;
+                                    return `${label}${value}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            chartInstances[canvasId] = chart;
+        };
 
         // --- Render Overall Bar Chart with Percentages ---
         const renderOverallBarChart = (data) => {

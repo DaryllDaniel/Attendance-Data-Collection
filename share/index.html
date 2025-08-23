@@ -6,11 +6,13 @@
     <title>Student Data Viewer</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Firebase SDKs for Cloud Persistence -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Expose Firebase services to the global scope
         window.firebase = {
@@ -21,7 +23,7 @@
             onAuthStateChanged,
             getFirestore,
             doc,
-            getDoc
+            onSnapshot
         };
     </script>
     <style>
@@ -34,33 +36,50 @@
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
     <!-- Main Application Container -->
-    <div class="bg-white p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl">
+    <div class="bg-white p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col lg:flex-row gap-8">
 
-        <h1 class="text-3xl md:text-4xl font-extrabold text-center text-blue-800 mb-6">Student Data Viewer</h1>
-        <p class="text-center text-gray-600 mb-8">This page displays the student data loaded from the cloud. You must first upload a file on the import page to see data here.</p>
+        <!-- Data Display and Controls Section -->
+        <div class="flex-1">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800 mb-2">Student Data Viewer</h1>
+            <p class="text-gray-600 mb-6">This app retrieves student attendance data from the cloud to display charts.</p>
+            
+            <!-- Loading and Status Messages -->
+            <div id="status-message" class="text-center p-4 text-gray-500 font-medium bg-gray-100 rounded-lg mb-6">
+                Connecting to the cloud...
+            </div>
 
-        <div id="statusMessage" class="text-center text-sm font-medium text-gray-600 mb-4"></div>
-        <div id="dataContainer" class="hidden overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 rounded-lg shadow-md">
-                <thead class="bg-blue-600 text-white">
-                    <tr>
-                        <th class="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Department</th>
-                        <th class="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Program</th>
-                        <th class="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">Total Students</th>
-                        <th class="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">1st Year (P/A)</th>
-                        <th class="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">2nd Year (P/A)</th>
-                        <th class="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">3rd Year (P/A)</th>
-                        <th class="px-4 md:px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider">4th Year (P/A)</th>
-                    </tr>
-                </thead>
-                <tbody id="studentDataTable" class="bg-white divide-y divide-gray-200">
-                    <!-- Data rows will be dynamically added here -->
-                </tbody>
-            </table>
+            <!-- Program Selector -->
+            <div id="program-controls-section" class="hidden mb-6">
+                <label for="program-select" class="block text-sm font-medium text-gray-700 mb-2">Select a Program:</label>
+                <select id="program-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm">
+                    <option value="">All Programs</option>
+                </select>
+            </div>
+
+            <!-- Department Selector -->
+            <div id="department-controls-section" class="hidden mb-6">
+                <label for="department-select" class="block text-sm font-medium text-gray-700 mb-2">Select a Department:</label>
+                <select id="department-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm">
+                    <option value="">All Departments</option>
+                </select>
+            </div>
         </div>
-        <div id="noDataMessage" class="text-center text-gray-500 mt-8">
-            No data found. Please import a CSV file on the main page.
+
+        <!-- Chart Section -->
+        <div class="flex-1 bg-gray-50 p-6 rounded-xl shadow-inner">
+            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Program</h2>
+            <div id="program-chart-container" class="w-full h-80 flex items-center justify-center mb-6">
+                <p id="program-chart-placeholder" class="text-gray-500 text-center">Charts will appear here after data is loaded.</p>
+                <canvas id="program-chart" class="hidden"></canvas>
+            </div>
+
+            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Department</h2>
+            <div id="department-chart-container" class="w-full h-80 flex items-center justify-center">
+                <p id="department-chart-placeholder" class="text-gray-500 text-center">Charts will appear here after data is loaded.</p>
+                <canvas id="department-chart" class="hidden"></canvas>
+            </div>
         </div>
+
     </div>
 
     <script type="module">
@@ -72,15 +91,23 @@
         const DOCUMENT_ID = "mainData";
 
         // --- DOM Element References ---
-        const statusMessage = document.getElementById('statusMessage');
-        const dataContainer = document.getElementById('dataContainer');
-        const noDataMessage = document.getElementById('noDataMessage');
-        const studentDataTable = document.getElementById('studentDataTable');
+        const programSelect = document.getElementById('program-select');
+        const departmentSelect = document.getElementById('department-select');
+        const statusMessage = document.getElementById('status-message');
+        const programControlsSection = document.getElementById('program-controls-section');
+        const departmentControlsSection = document.getElementById('department-controls-section');
+        const programChartPlaceholder = document.getElementById('program-chart-placeholder');
+        const departmentChartPlaceholder = document.getElementById('department-chart-placeholder');
+        const programChartCanvas = document.getElementById('program-chart');
+        const departmentChartCanvas = document.getElementById('department-chart');
         
+        let studentData = [];
+        let programChart;
+        let departmentChart;
+
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
             try {
-                // Use built-in Canvas variables for Firebase config and auth token
                 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                 const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
                 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -89,22 +116,22 @@
                 auth = window.firebase.getAuth(app);
                 db = window.firebase.getFirestore(app);
 
-                // Sign in with the provided token or anonymously
+                // Sign in with the provided custom token
                 if (initialAuthToken) {
                     await window.firebase.signInWithCustomToken(auth, initialAuthToken);
                 } else {
                     await window.firebase.signInAnonymously(auth);
                 }
 
-                // Listen for auth state changes and update user ID
-                window.firebase.onAuthStateChanged(auth, async (user) => {
+                // Listen for auth state changes to get the user ID
+                window.firebase.onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
-                        await loadDataFromFirestore();
+                        statusMessage.textContent = "Connected to cloud. Retrieving data...";
+                        statusMessage.style.color = '#4b5563';
+                        fetchDataFromFirestore();
                     } else {
-                        // User is signed out. Handle this case if needed.
-                        console.log("User is signed out.");
-                        statusMessage.textContent = "Please sign in to view data.";
+                        statusMessage.textContent = "Failed to connect to the cloud.";
                         statusMessage.style.color = '#dc2626';
                     }
                 });
@@ -115,74 +142,228 @@
             }
         };
 
-        // --- Load data from Firestore ---
-        const loadDataFromFirestore = async () => {
+        // --- Fetch Data from Firestore ---
+        const fetchDataFromFirestore = () => {
             if (!db || !userId) {
-                statusMessage.textContent = "Error: Firestore not initialized or user not authenticated.";
+                statusMessage.textContent = "Cloud connection not ready. Data cannot be retrieved.";
                 statusMessage.style.color = '#dc2626';
                 return;
             }
 
-            statusMessage.textContent = "Loading data from the cloud...";
-            statusMessage.style.color = '#4b5563';
-            noDataMessage.classList.add('hidden');
-            dataContainer.classList.add('hidden');
-            
             const docRef = window.firebase.doc(db, `artifacts/${__app_id}/users/${userId}/${COLLECTION_NAME}`, DOCUMENT_ID);
-            
-            try {
-                const docSnap = await window.firebase.getDoc(docRef);
+
+            // Use onSnapshot for real-time data listening
+            window.firebase.onSnapshot(docRef, (docSnap) => {
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    const parsed = JSON.parse(data.studentData);
-                    displayData(parsed);
-                    statusMessage.textContent = "Data loaded successfully!";
-                    statusMessage.style.color = '#10b981';
+                    try {
+                        studentData = JSON.parse(data.studentData);
+                        if (studentData.length > 0) {
+                            statusMessage.textContent = "Data retrieved successfully!";
+                            statusMessage.style.color = '#10b981';
+                            populateSelectors(studentData);
+                            renderProgramChart(studentData);
+                            renderDepartmentChart(studentData);
+                        } else {
+                            statusMessage.textContent = "No student data found in the cloud.";
+                            statusMessage.style.color = '#dc2626';
+                        }
+                    } catch (e) {
+                        console.error("Error parsing data from Firestore:", e);
+                        statusMessage.textContent = "Error parsing data from the cloud.";
+                        statusMessage.style.color = '#dc2626';
+                    }
                 } else {
-                    statusMessage.textContent = "No saved data found.";
-                    statusMessage.style.color = '#4b5563';
-                    noDataMessage.classList.remove('hidden');
-                    dataContainer.classList.add('hidden');
+                    statusMessage.textContent = "No data found for this user in the cloud.";
+                    statusMessage.style.color = '#dc2626';
+                    console.log("No such document!");
                 }
-            } catch (error) {
-                console.error("Error loading data from Firestore:", error);
-                statusMessage.textContent = "Error loading data from the cloud. Please try again.";
+            }, (error) => {
+                console.error("Error fetching document:", error);
+                statusMessage.textContent = "Error fetching data from the cloud. Please try again.";
                 statusMessage.style.color = '#dc2626';
-                noDataMessage.classList.remove('hidden');
-                dataContainer.classList.add('hidden');
-            }
+            });
         };
 
-        // --- Display data in a table ---
-        const displayData = (data) => {
-            studentDataTable.innerHTML = '';
-            if (data && data.length > 0) {
-                data.forEach(student => {
-                    const row = document.createElement('tr');
-                    row.classList.add('hover:bg-gray-50');
-                    row.innerHTML = `
-                        <td class="px-4 md:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${student.department}</td>
-                        <td class="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.program}</td>
-                        <td class="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.totalStudents}</td>
-                        <td class="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.year1.present} / ${student.year1.absent}</td>
-                        <td class="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.year2.present} / ${student.year2.absent}</td>
-                        <td class="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.year3.present} / ${student.year3.absent}</td>
-                        <td class="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">${student.year4.present} / ${student.year4.absent}</td>
-                    `;
-                    studentDataTable.appendChild(row);
-                });
-                dataContainer.classList.remove('hidden');
-                noDataMessage.classList.add('hidden');
-            } else {
-                noDataMessage.classList.remove('hidden');
-                dataContainer.classList.add('hidden');
-            }
+        // --- Data Formatting is not needed as we are parsing the JSON directly.
+        // --- Populate Selectors ---
+        const populateSelectors = (data) => {
+            const uniquePrograms = new Set(data.map(item => item.program));
+            programSelect.innerHTML = '<option value="">All Programs</option>';
+            uniquePrograms.forEach(program => {
+                const option = document.createElement('option');
+                option.value = program;
+                option.textContent = program;
+                programSelect.appendChild(option);
+            });
+            programControlsSection.classList.remove('hidden');
+
+            const uniqueDepartments = new Set(data.map(item => item.department));
+            departmentSelect.innerHTML = '<option value="">All Departments</option>';
+            uniqueDepartments.forEach(department => {
+                const option = document.createElement('option');
+                option.value = department;
+                option.textContent = department;
+                departmentSelect.appendChild(option);
+            });
+            departmentControlsSection.classList.remove('hidden');
         };
 
-        // Initial state on page load
+        // --- Program Chart Rendering and Updating ---
+        const renderProgramChart = (data) => {
+            programChartPlaceholder.classList.add('hidden');
+            programChartCanvas.classList.remove('hidden');
+
+            const labels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+            const presentData = labels.map((_, i) => data.reduce((sum, current) => sum + current[`year${i + 1}`].present, 0));
+            const absentData = labels.map((_, i) => data.reduce((sum, current) => sum + current[`year${i + 1}`].absent, 0));
+
+            const chartData = {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Present Students',
+                        data: presentData,
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Absent Students',
+                        data: absentData,
+                        backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                        borderColor: 'rgba(239, 68, 68, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            };
+
+            const config = {
+                type: 'bar',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((sum, current) => sum + current, 0);
+                                    const value = context.raw;
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : '0.00';
+                                    return `${context.dataset.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            if (programChart) {
+                programChart.destroy();
+            }
+            programChart = new Chart(programChartCanvas, config);
+        };
+
+        // --- Department Chart Rendering and Updating (Bar Chart) ---
+        const renderDepartmentChart = (data) => {
+            departmentChartPlaceholder.classList.add('hidden');
+            departmentChartCanvas.classList.remove('hidden');
+
+            const departmentData = data.reduce((acc, row) => {
+                if (!acc[row.department]) {
+                    acc[row.department] = { present: 0, absent: 0 };
+                }
+                acc[row.department].present += row.year1.present + row.year2.present + row.year3.present + row.year4.present;
+                acc[row.department].absent += row.year1.absent + row.year2.absent + row.year3.absent + row.year4.absent;
+                return acc;
+            }, {});
+
+            const labels = Object.keys(departmentData);
+            const presentData = labels.map(label => departmentData[label].present);
+            const absentData = labels.map(label => departmentData[label].absent);
+
+            const chartData = {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Present Students',
+                        data: presentData,
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Absent Students',
+                        data: absentData,
+                        backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                        borderColor: 'rgba(239, 68, 68, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            };
+
+            const config = {
+                type: 'bar',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const total = context.dataset.data.reduce((sum, current) => sum + current, 0);
+                                    const value = context.raw;
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : '0.00';
+                                    return `${context.dataset.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            if (departmentChart) {
+                departmentChart.destroy();
+            }
+            departmentChart = new Chart(departmentChartCanvas, config);
+        };
+
+        // --- Event Listeners for Selectors ---
+        programSelect.addEventListener('change', (e) => {
+            const selectedProgram = e.target.value;
+            let filteredData = studentData;
+
+            if (selectedProgram !== '') {
+                filteredData = studentData.filter(item => item.program === selectedProgram);
+            }
+            renderProgramChart(filteredData);
+        });
+
+        departmentSelect.addEventListener('change', (e) => {
+            const selectedDepartment = e.target.value;
+            let filteredData = studentData;
+
+            if (selectedDepartment !== '') {
+                filteredData = studentData.filter(item => item.department === selectedDepartment);
+            }
+            renderDepartmentChart(filteredData);
+        });
+
+        // --- Initial App Setup ---
         document.addEventListener('DOMContentLoaded', () => {
             setupFirebase();
         });
     </script>
 </body>
 </html>
+

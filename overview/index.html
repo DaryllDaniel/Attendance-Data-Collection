@@ -3,16 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Data Tracker</title>
+    <title>Student Data Import</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js for creating the pie chart -->
+    <!-- Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Papaparse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <!-- Firebase SDKs for Cloud Persistence -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, setDoc, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Expose Firebase services to the global scope
         window.firebase = {
@@ -22,10 +24,8 @@
             signInWithCustomToken,
             onAuthStateChanged,
             getFirestore,
-            doc,
-            getDoc,
             setDoc,
-            Timestamp // <-- Added Timestamp to make it accessible
+            doc
         };
     </script>
     <style>
@@ -33,135 +33,60 @@
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
         }
-        .program-item {
-            cursor: pointer;
+        .drop-area {
+            border: 2px dashed #9ca3af;
+            border-radius: 0.75rem;
             transition: all 0.2s ease-in-out;
-            position: relative;
         }
-        .program-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        .program-item.active {
-            background-color: #2563eb;
-            color: #ffffff;
-            font-weight: bold;
-        }
-        .program-item.active h3, .program-item.active p {
-            color: #ffffff;
+        .drop-area.highlight {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
         }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
 
     <!-- Main Application Container -->
-    <div class="bg-white p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col md:flex-row gap-8">
+    <div class="bg-white p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col lg:flex-row gap-8">
 
-        <!-- Left Side: Import and Program List -->
-        <div class="w-full md:w-1/2 space-y-6">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-center md:text-left text-blue-800 mb-6">Student Data Import</h1>
-            <p class="text-center md:text-left text-gray-600 mb-8">Upload a CSV file to visualize student attendance by program or department. Select a program below to view its charts.</p>
-
-            <!-- File Import Area -->
-            <div class="space-y-4">
-                <div class="p-6 border-2 border-dashed border-gray-300 rounded-lg text-center bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
-                    <label for="csvFile" class="flex flex-col items-center justify-center space-y-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
-                        <span class="font-semibold text-gray-600">Drag and drop a CSV file here</span>
-                        <span class="text-sm text-gray-500">or click to browse</span>
-                        <input type="file" id="csvFile" class="hidden" accept=".csv">
-                    </label>
-                </div>
-                <div id="statusMessage" class="text-center text-sm font-medium text-gray-600"></div>
-            </div>
-
-            <!-- Program List -->
-            <div id="programListContainer" class="hidden mt-8">
-                <h2 class="text-xl font-bold text-gray-800 mb-4">Select a Program</h2>
-                <div id="programList" class="space-y-4 max-h-96 overflow-y-auto pr-2">
-                    <!-- Program items will be dynamically added here -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Side: Real-time Chart Display Section -->
-        <div class="w-full md:w-1/2 flex flex-col justify-center items-center p-4 bg-gray-50 rounded-xl shadow-inner">
-            <h2 class="text-2xl md:text-3xl font-bold text-center text-gray-800 mb-4">Live Attendance Charts</h2>
+        <!-- Data Import and Controls Section -->
+        <div class="flex-1">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800 mb-2">Student Data Import</h1>
+            <p class="text-gray-600 mb-6">Upload a CSV file to visualize student attendance by program or department. Select a program below to view its charts.</p>
             
-            <div id="noDataMessage" class="text-center text-gray-500 mt-8">
-                Please upload a CSV file to view the attendance charts.
+            <!-- File Drop Area -->
+            <div id="drop-area" class="drop-area p-8 text-center cursor-pointer mb-6">
+                <p class="text-gray-500 mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                </p>
+                <p class="text-lg font-medium text-gray-600">Drag and drop a CSV file here</p>
+                <span class="text-gray-400 text-sm">or click to browse</span>
+                <input type="file" id="file-input" class="hidden" accept=".csv" />
             </div>
 
-            <div id="chartContainer" class="hidden w-full max-w-xl space-y-6">
-                <!-- Overall Chart -->
-                <div class="p-4 bg-white rounded-lg shadow-md flex flex-col items-center">
-                    <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Overall Attendance</h3>
-                    <div class="w-full h-auto max-w-xs mx-auto">
-                        <canvas id="myPieChart"></canvas>
-                    </div>
-                </div>
+            <!-- Program Selector -->
+            <div id="controls-section" class="hidden mb-6">
+                <label for="program-select" class="block text-sm font-medium text-gray-700 mb-2">Select a Program:</label>
+                <select id="program-select" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md shadow-sm">
+                    <option value="">All Departments</option>
+                </select>
+            </div>
 
-                <!-- Department Distribution Chart -->
-                <div id="departmentDistributionChartContainer" class="hidden p-4 bg-white rounded-lg shadow-md flex flex-col items-center">
-                    <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Department Distribution</h3>
-                    <div class="w-full h-auto max-w-[250px] mx-auto">
-                        <canvas id="departmentDistributionChart"></canvas>
-                    </div>
-                </div>
+            <!-- Status and Error Messages -->
+            <div id="status-message" class="text-red-500 text-sm font-medium"></div>
+        </div>
 
-                <!-- New Program Distribution Chart with custom legend -->
-                <div id="programDistributionSection" class="hidden p-4 bg-white rounded-lg shadow-md flex flex-col md:flex-row justify-center items-center md:items-start gap-4">
-                    <div class="w-full md:w-1/2 flex flex-col items-center">
-                        <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Program Distribution by Department</h3>
-                        <div class="w-full max-w-[300px] mb-4">
-                            <label id="selectedDepartmentLabel" class="font-bold text-blue-600 text-center block mb-2">Select a Department</label>
-                            <input type="range" id="departmentSlider" min="0" max="0" value="0" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                        </div>
-                        <div class="w-full h-auto max-w-[250px] mx-auto">
-                            <canvas id="programDistributionChart"></canvas>
-                        </div>
-                    </div>
-                    <!-- Custom legend container, now on the right -->
-                    <div id="programLegendContainer" class="w-full md:w-1/2 max-h-[400px] overflow-y-auto mt-4 md:mt-0 pr-2 space-y-2">
-                        <!-- Legend items will be dynamically added here -->
-                    </div>
-                </div>
-                
-                <!-- Individual Year Charts -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
-                    <!-- 1st Year Chart -->
-                    <div class="p-4 bg-white rounded-lg shadow-md flex flex-col items-center">
-                        <h3 class="font-semibold text-center text-lg mb-2 text-blue-600">1st Year</h3>
-                        <div class="w-full h-auto max-w-[150px] mx-auto">
-                            <canvas id="year1PieChart"></canvas>
-                        </div>
-                    </div>
-                    <!-- 2nd Year Chart -->
-                    <div class="p-4 bg-white rounded-lg shadow-md flex flex-col items-center">
-                        <h3 class="font-semibold text-center text-lg mb-2 text-green-600">2nd Year</h3>
-                        <div class="w-full h-auto max-w-[150px] mx-auto">
-                            <canvas id="year2PieChart"></canvas>
-                        </div>
-                    </div>
-                    <!-- 3rd Year Chart -->
-                    <div class="p-4 bg-white rounded-lg shadow-md flex flex-col items-center">
-                        <h3 class="font-semibold text-center text-lg mb-2 text-yellow-600">3rd Year</h3>
-                        <div class="w-full h-auto max-w-[150px] mx-auto">
-                            <canvas id="year3PieChart"></canvas>
-                        </div>
-                    </div>
-                    <!-- 4th Year Chart -->
-                    <div class="p-4 bg-white rounded-lg shadow-md flex flex-col items-center">
-                        <h3 class="font-semibold text-center text-lg mb-2 text-purple-600">4th Year</h3>
-                        <div class="w-full h-auto max-w-[150px] mx-auto">
-                            <canvas id="year4PieChart"></canvas>
-                        </div>
-                    </div>
-                </div>
+        <!-- Chart Section -->
+        <div class="flex-1 bg-gray-50 p-6 rounded-xl shadow-inner">
+            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Live Attendance Charts</h2>
+            <div id="chart-container" class="w-full h-80 flex items-center justify-center">
+                <p id="chart-placeholder" class="text-gray-500 text-center">Please upload a CSV file to view the attendance charts.</p>
+                <canvas id="student-chart" class="hidden"></canvas>
             </div>
         </div>
+
     </div>
 
     <script type="module">
@@ -173,22 +98,16 @@
         const DOCUMENT_ID = "mainData";
 
         // --- DOM Element References ---
-        const csvFile = document.getElementById('csvFile');
-        const statusMessage = document.getElementById('statusMessage');
-        const noDataMessage = document.getElementById('noDataMessage');
-        const chartContainer = document.getElementById('chartContainer');
-        const departmentDistributionChartContainer = document.getElementById('departmentDistributionChartContainer');
-        const programList = document.getElementById('programList');
-        const programListContainer = document.getElementById('programListContainer');
-        const programDistributionSection = document.getElementById('programDistributionSection');
-        const departmentSlider = document.getElementById('departmentSlider');
-        const selectedDepartmentLabel = document.getElementById('selectedDepartmentLabel');
-        const programLegendContainer = document.getElementById('programLegendContainer');
-        const chartInstances = {};
-        let studentDataList = [];
-        let departments = {};
-        let departmentNames = [];
-        let overallAttendanceData = null;
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('file-input');
+        const programSelect = document.getElementById('program-select');
+        const statusMessage = document.getElementById('status-message');
+        const controlsSection = document.getElementById('controls-section');
+        const chartPlaceholder = document.getElementById('chart-placeholder');
+        const chartCanvas = document.getElementById('student-chart');
+        
+        let studentData = [];
+        let myChart;
 
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
@@ -213,10 +132,13 @@
                 window.firebase.onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
-                        await loadDataFromFirestore();
+                        // Data saving happens on file drop, not on auth change.
+                        statusMessage.textContent = "Cloud connection successful!";
+                        statusMessage.style.color = '#10b981';
                     } else {
-                        // User is signed out. Handle this case if needed.
                         console.log("User is signed out.");
+                        statusMessage.textContent = "Please sign in to save data to the cloud.";
+                        statusMessage.style.color = '#dc2626';
                     }
                 });
             } catch (error) {
@@ -226,355 +148,194 @@
             }
         };
 
-        // --- Load data from Firestore ---
-        const loadDataFromFirestore = async () => {
-            if (!db || !userId) {
-                console.error("Firestore not initialized or user not authenticated.");
+        // --- Drag & Drop Event Listeners ---
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.classList.add('highlight');
+        });
+
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.classList.remove('highlight');
+        });
+
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropArea.classList.remove('highlight');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        dropArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFile(e.target.files[0]);
+        });
+
+        // --- File Handling and Parsing ---
+        const handleFile = (file) => {
+            if (file.type !== 'text/csv') {
+                statusMessage.textContent = "Invalid file type. Please upload a CSV file.";
+                statusMessage.style.color = '#dc2626';
                 return;
             }
 
-            statusMessage.textContent = "Checking for saved data...";
+            statusMessage.textContent = "Processing file...";
             statusMessage.style.color = '#4b5563';
-            
-            const docRef = window.firebase.doc(db, `artifacts/${__app_id}/users/${userId}/${COLLECTION_NAME}`, DOCUMENT_ID);
-            
-            try {
-                const docSnap = await window.firebase.getDoc(docRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    const parsed = JSON.parse(data.studentData);
-                    processAndDisplayData(parsed);
-                    statusMessage.textContent = "Data loaded from the cloud successfully!";
-                    statusMessage.style.color = '#10b981';
-                } else {
-                    statusMessage.textContent = "No saved data found in the cloud. Upload a file to get started.";
-                    statusMessage.style.color = '#4b5563';
+
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: true,
+                complete: (results) => {
+                    studentData = formatData(results.data);
+                    
+                    if (studentData.length > 0) {
+                        populateProgramSelect(studentData);
+                        renderChart(studentData);
+                        saveDataToFirestore(studentData);
+                    } else {
+                        statusMessage.textContent = "CSV file is empty or formatted incorrectly.";
+                        statusMessage.style.color = '#dc2626';
+                    }
+                },
+                error: (error) => {
+                    statusMessage.textContent = "Error parsing CSV file.";
+                    statusMessage.style.color = '#dc2626';
+                    console.error("CSV parsing error:", error);
                 }
-            } catch (error) {
-                console.error("Error loading data from Firestore:", error);
-                statusMessage.textContent = "Error loading data from the cloud. Please try again.";
-                statusMessage.style.color = '#dc2626';
-            }
+            });
         };
 
-        // --- Save data to Firestore ---
-        const saveDataToFirestore = async (dataToSave) => {
+        // --- Data Formatting ---
+        const formatData = (data) => {
+            return data.map(row => ({
+                department: row.department,
+                program: row.program,
+                totalStudents: parseInt(row.totalStudents, 10),
+                year1: { present: parseInt(row.year1_present, 10), absent: parseInt(row.year1_absent, 10) },
+                year2: { present: parseInt(row.year2_present, 10), absent: parseInt(row.year2_absent, 10) },
+                year3: { present: parseInt(row.year3_present, 10), absent: parseInt(row.year3_absent, 10) },
+                year4: { present: parseInt(row.year4_present, 10), absent: parseInt(row.year4_absent, 10) },
+            }));
+        };
+
+        // --- Save Data to Firestore ---
+        const saveDataToFirestore = async (data) => {
             if (!db || !userId) {
-                console.error("Firestore not initialized or user not authenticated.");
+                statusMessage.textContent = "Cloud connection not ready. Data will not be saved.";
+                statusMessage.style.color = '#dc2626';
                 return;
             }
 
             statusMessage.textContent = "Saving data to the cloud...";
             statusMessage.style.color = '#4b5563';
 
+            // Convert the array of objects to a JSON string for single document storage
+            const dataToSave = {
+                studentData: JSON.stringify(data)
+            };
+
             const docRef = window.firebase.doc(db, `artifacts/${__app_id}/users/${userId}/${COLLECTION_NAME}`, DOCUMENT_ID);
-            
+
             try {
-                await window.firebase.setDoc(docRef, {
-                    studentData: JSON.stringify(dataToSave),
-                    timestamp: window.firebase.Timestamp.now()
-                });
-                statusMessage.textContent = "Data saved to the cloud successfully!";
+                await window.firebase.setDoc(docRef, dataToSave);
+                statusMessage.textContent = "File processed and data saved to the cloud successfully!";
                 statusMessage.style.color = '#10b981';
-            } catch (error) {
-                console.error("Error saving data to Firestore:", error);
+                console.log("Document successfully written with ID:", DOCUMENT_ID);
+            } catch (e) {
+                console.error("Error adding document: ", e);
                 statusMessage.textContent = "Error saving data to the cloud. Please try again.";
                 statusMessage.style.color = '#dc2626';
             }
         };
 
-        // --- Helper function to create/update a pie chart ---
-        const updatePieChart = (canvasId, data, labels, colors) => {
-            const canvas = document.getElementById(canvasId);
-            if (!canvas) {
-                console.error(`Canvas element with ID '${canvasId}' not found.`);
-                return;
-            }
+        // --- Populate Program Selector ---
+        const populateProgramSelect = (data) => {
+            const uniquePrograms = new Set(data.map(item => item.program));
+            programSelect.innerHTML = '<option value="">All Programs</option>';
+            uniquePrograms.forEach(program => {
+                const option = document.createElement('option');
+                option.value = program;
+                option.textContent = program;
+                programSelect.appendChild(option);
+            });
+            controlsSection.classList.remove('hidden');
+        };
 
-            if (chartInstances[canvasId]) {
-                chartInstances[canvasId].destroy();
-            }
+        // --- Chart Rendering and Updating ---
+        const renderChart = (data) => {
+            chartPlaceholder.classList.add('hidden');
+            chartCanvas.classList.remove('hidden');
 
-            const showLegend = canvasId !== 'programDistributionChart';
+            const labels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+            const presentData = labels.map((_, i) => data.reduce((sum, current) => sum + current[`year${i + 1}`].present, 0));
+            const absentData = labels.map((_, i) => data.reduce((sum, current) => sum + current[`year${i + 1}`].absent, 0));
+            const totalData = labels.map((_, i) => data.reduce((sum, current) => sum + current[`year${i + 1}`].present + current[`year${i + 1}`].absent, 0));
 
-            const chart = new Chart(canvas, {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: colors,
-                        hoverOffset: 8,
+            const chartData = {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Present Students',
+                        data: presentData,
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Absent Students',
+                        data: absentData,
+                        backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                        borderColor: 'rgba(239, 68, 68, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Total Students',
+                        data: totalData,
+                        type: 'line',
+                        fill: false,
+                        borderColor: 'rgba(75, 85, 99, 1)',
                         borderWidth: 2,
-                        borderColor: '#ffffff',
-                    }]
-                },
+                        tension: 0.1
+                    }
+                ]
+            };
+
+            const config = {
+                type: 'bar',
+                data: chartData,
                 options: {
                     responsive: true,
-                    plugins: {
-                        legend: {
-                            display: showLegend,
-                            position: 'bottom',
-                            labels: {
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(tooltipItem) {
-                                    const value = tooltipItem.raw;
-                                    const total = tooltipItem.dataset.data.reduce((acc, curr) => acc + curr, 0);
-                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
-                                    return ` ${tooltipItem.label}: ${value} (${percentage}%)`;
-                                }
-                            }
-                        }
-                    },
-                    cutout: '40%',
-                }
-            });
-
-            chartInstances[canvasId] = chart;
-        };
-        
-        // --- Function to update the overall attendance charts ---
-        const updateAttendanceCharts = (data) => {
-            if (!data) return;
-            updatePieChart('myPieChart', [overallAttendanceData.present, overallAttendanceData.absent], ['Present', 'Absent'], ['#2563eb', '#dc2626']);
-            
-            updatePieChart('year1PieChart', [data.year1.present, data.year1.absent], ['Present', 'Absent'], ['#2563eb', '#dc2626']);
-            updatePieChart('year2PieChart', [data.year2.present, data.year2.absent], ['Present', 'Absent'], ['#2563eb', '#dc2626']);
-            updatePieChart('year3PieChart', [data.year3.present, data.year3.absent], ['Present', 'Absent'], ['#2563eb', '#dc2626']);
-            updatePieChart('year4PieChart', [data.year4.present, data.year4.absent], ['Present', 'Absent'], ['#2563eb', '#dc2626']);
-        };
-        
-        // --- Function to update the department distribution chart ---
-        const updateDepartmentCharts = () => {
-            departmentNames = Object.keys(departments);
-            const departmentData = departmentNames.map(dept => departments[dept].totalStudents);
-            const departmentColors = departmentNames.map((_, i) => `hsl(${i * 360 / departmentNames.length}, 70%, 50%)`);
-
-            if (departmentNames.length > 1) {
-                departmentDistributionChartContainer.classList.remove('hidden');
-                
-                const totalStudents = departmentData.reduce((sum, current) => sum + current, 0);
-
-                const newLabels = departmentNames.map((name, index) => {
-                    const count = departmentData[index];
-                    const percentage = totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0;
-                    return `${name}: ${count} (${percentage}%)`;
-                });
-
-                updatePieChart('departmentDistributionChart', departmentData, newLabels, departmentColors);
-            } else {
-                departmentDistributionChartContainer.classList.add('hidden');
-            }
-        };
-
-        // --- Function to update the program distribution chart for a specific department ---
-        const updateProgramDistributionChart = (departmentName) => {
-            const programsInDept = studentDataList.filter(p => p.department === departmentName);
-            const programLabels = programsInDept.map(p => p.program);
-            const programData = programsInDept.map(p => p.totalStudents);
-            const programColors = programLabels.map((_, i) => `hsl(${i * 360 / programLabels.length}, 70%, 50%)`);
-
-            const totalStudents = programData.reduce((sum, current) => sum + current, 0);
-
-            updatePieChart('programDistributionChart', programData, programLabels, programColors);
-
-            programLegendContainer.innerHTML = '';
-            programLabels.forEach((label, index) => {
-                const count = programData[index];
-                const percentage = totalStudents > 0 ? ((count / totalStudents) * 100).toFixed(1) : 0;
-                const color = programColors[index];
-
-                const legendItem = document.createElement('div');
-                legendItem.classList.add('flex', 'items-center', 'gap-2', 'p-2', 'rounded-md', 'bg-white', 'shadow-sm', 'cursor-pointer');
-                legendItem.innerHTML = `
-                    <span class="w-4 h-4 rounded-full" style="background-color: ${color};"></span>
-                    <span class="text-sm text-gray-700">${label}</span>
-                    <span class="ml-auto text-sm font-semibold text-gray-800">${count} (${percentage}%)</span>
-                `;
-                programLegendContainer.appendChild(legendItem);
-            });
-            
-            programDistributionSection.classList.remove('hidden');
-        };
-        
-        // --- Render Program List ---
-        const renderProgramList = (dataList) => {
-            programList.innerHTML = '';
-            dataList.forEach((data, index) => {
-                const programDiv = document.createElement('div');
-                programDiv.classList.add('program-item', 'p-4', 'bg-white', 'rounded-lg', 'shadow-md');
-                programDiv.innerHTML = `
-                    <h3 class="font-semibold text-gray-800">${data.program}</h3>
-                    <p class="text-sm text-gray-600">${data.department}</p>
-                `;
-                programDiv.dataset.index = index;
-                programDiv.addEventListener('click', () => {
-                    const isActive = programDiv.classList.contains('active');
-                    
-                    document.querySelectorAll('.program-item').forEach(item => item.classList.remove('active'));
-
-                    if (isActive) {
-                        noDataMessage.textContent = 'Please select a program to view detailed attendance charts.';
-                        chartContainer.classList.add('hidden');
-                        noDataMessage.classList.remove('hidden');
-                    } else {
-                        programDiv.classList.add('active');
-                        updateAttendanceCharts(studentDataList[index]);
-                        noDataMessage.classList.add('hidden');
-                        chartContainer.classList.remove('hidden');
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true }
                     }
-                });
-                programList.appendChild(programDiv);
-            });
-            programListContainer.classList.remove('hidden');
-        };
-
-        // --- Handle Slider Input ---
-        const handleSliderInput = () => {
-            const index = departmentSlider.value;
-            const selectedDepartment = departmentNames[index];
-            if (selectedDepartment) {
-                selectedDepartmentLabel.textContent = selectedDepartment;
-                updateProgramDistributionChart(selectedDepartment);
-            }
-        };
-
-        // --- Parse CSV File ---
-        const parseCsv = (csvText) => {
-            const lines = csvText.trim().split('\n').filter(line => line.trim() !== '');
-            if (lines.length < 2) {
-                statusMessage.textContent = 'Error: CSV file must contain a header and at least one data row.';
-                statusMessage.style.color = '#dc2626';
-                return null;
-            }
-
-            const headers = lines[0].split(',').map(h => h.trim());
-            const dataRows = lines.slice(1);
-            const parsedData = [];
-
-            if (headers.length !== 14) {
-                statusMessage.textContent = 'Error: CSV format is incorrect. Expected 14 columns.';
-                statusMessage.style.color = '#dc2626';
-                return null;
-            }
-            
-            for (const row of dataRows) {
-                const values = row.split(',').map(v => v.trim());
-                if (values.length !== 14) {
-                    statusMessage.textContent = `Error: Row has an incorrect number of columns. Expected 14, got ${values.length}.`;
-                    statusMessage.style.color = '#dc2626';
-                    return null;
-                }
-                
-                try {
-                    const year1Total = parseInt(values[2]);
-                    const year2Total = parseInt(values[5]);
-                    const year3Total = parseInt(values[8]);
-                    const year4Total = parseInt(values[11]);
-                    const totalStudents = year1Total + year2Total + year3Total + year4Total;
-
-                    parsedData.push({
-                        department: values[0],
-                        program: values[1],
-                        year1: { total: year1Total, present: parseInt(values[3]), absent: parseInt(values[4]) },
-                        year2: { total: year2Total, present: parseInt(values[6]), absent: parseInt(values[7]) },
-                        year3: { total: year3Total, present: parseInt(values[9]), absent: parseInt(values[10]) },
-                        year4: { total: year4Total, present: parseInt(values[12]), absent: parseInt(values[13]) },
-                        totalStudents: totalStudents
-                    });
-                } catch (e) {
-                    statusMessage.textContent = 'Error: Failed to parse data. Please ensure number columns contain valid numbers.';
-                    statusMessage.style.color = '#dc2626';
-                    return null;
-                }
-            }
-            
-            return parsedData;
-        };
-
-        // --- Process and display loaded data ---
-        const processAndDisplayData = (data) => {
-            studentDataList = data;
-            
-            if (studentDataList && studentDataList.length > 0) {
-                overallAttendanceData = studentDataList.reduce((acc, current) => {
-                    acc.present += current.year1.present + current.year2.present + current.year3.present + current.year4.present;
-                    acc.absent += current.year1.absent + current.year2.absent + current.year3.absent + current.year4.absent;
-                    return acc;
-                }, { present: 0, absent: 0 });
-
-                departments = studentDataList.reduce((acc, current) => {
-                    if (!acc[current.department]) {
-                        acc[current.department] = { totalStudents: 0, programs: [] };
-                    }
-                    acc[current.department].totalStudents += current.totalStudents;
-                    acc[current.department].programs.push(current);
-                    return acc;
-                }, {});
-                
-                renderProgramList(studentDataList);
-                updateDepartmentCharts();
-                
-                noDataMessage.classList.add('hidden');
-                chartContainer.classList.remove('hidden');
-
-                updatePieChart('myPieChart', [overallAttendanceData.present, overallAttendanceData.absent], ['Present', 'Absent'], ['#2563eb', '#dc2626']);
-                
-                departmentNames = Object.keys(departments);
-                departmentSlider.max = departmentNames.length - 1;
-                if (departmentNames.length > 0) {
-                    departmentSlider.value = 0;
-                    selectedDepartmentLabel.textContent = departmentNames[0];
-                    updateProgramDistributionChart(departmentNames[0]);
-                    programDistributionSection.classList.remove('hidden');
-                }
-            } else if (studentDataList) {
-                statusMessage.textContent = 'File loaded, but no program data was found.';
-                statusMessage.style.color = '#dc2626';
-                studentDataList = [];
-                programListContainer.classList.add('hidden');
-                noDataMessage.textContent = 'Please upload a CSV file to view the attendance charts.';
-                noDataMessage.classList.remove('hidden');
-                chartContainer.classList.add('hidden');
-                updateDepartmentCharts();
-                programDistributionSection.classList.add('hidden');
-            }
-        };
-
-        // --- Handle File Upload ---
-        const handleFileLoad = (event) => {
-            const file = event.target.files[0];
-            if (!file) {
-                return;
-            }
-
-            statusMessage.textContent = 'Reading file...';
-            statusMessage.style.color = '#4b5563';
-
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const text = e.target.result;
-                const parsedData = parseCsv(text);
-                
-                if (parsedData) {
-                    processAndDisplayData(parsedData);
-                    saveDataToFirestore(parsedData);
                 }
             };
-            reader.readAsText(file);
+
+            if (myChart) {
+                myChart.destroy();
+            }
+            myChart = new Chart(chartCanvas, config);
         };
 
-        // --- Event Listeners ---
-        csvFile.addEventListener('change', handleFileLoad);
-        departmentSlider.addEventListener('input', handleSliderInput);
+        // --- Event Listener for Program Selector ---
+        programSelect.addEventListener('change', (e) => {
+            const selectedProgram = e.target.value;
+            let filteredData = studentData;
 
-        // Initial state on page load
+            if (selectedProgram !== '') {
+                filteredData = studentData.filter(item => item.program === selectedProgram);
+            }
+            renderChart(filteredData);
+        });
+
+        // --- Initial App Setup ---
         document.addEventListener('DOMContentLoaded', () => {
             setupFirebase();
         });

@@ -11,7 +11,7 @@
     <!-- Firebase SDKs for Cloud Persistence -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Expose Firebase services to the global scope
@@ -20,7 +20,6 @@
             getAuth,
             signInAnonymously,
             onAuthStateChanged,
-            signInWithCustomToken,
             getFirestore,
             doc,
             onSnapshot,
@@ -32,7 +31,7 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
-            background-image: url('https://scontent.fcrk1-1.fna.fbcdn.net/v/t39.30808-6/534829113_1219906786818614_3623306942044619088_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=IVr9Yr1-pvUQ7kNvwFa9iO5&_nc_oc=AdntxIkfqY4bkAXBlJJlzddtb7L6hdtB7b9Szq2OuBkDf7fySj9CjncTopvIdlkE_aA&_nc_zt=23&_nc_ht=scontent.fcrk1-1.fna&_nc_gid=wsNnun-HKCpyMJFkIDXHpA&oh=00_AfUlrYAo7YO63AptckNhX1w5AiCyZbvdvxxE5l_uo6vsQw&oe=68AF8B73');
+            background-image: url('https://scontent.fcrk1-1.fna.fbcdn.net/v/t39.30808-6/534829113_1219906786818614_3623306942044619088_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=IVr9Yr1-pvUQkNvwFa9iO5&_nc_oc=AdntxIkfqY4bkAXBlJJlzddtb7L6hdtB7b9Szq2OuBkDf7fySj9CjncTopvIdlkE_aA&_nc_zt=23&_nc_ht=scontent.fcrk1-1.fna&_nc_gid=wsNnun-HKCpyMJFkIDXHpA&oh=00_AfUlrYAo7YO63AptckNhX1w5AiCyZbvdvxxE5l_uo6vsQw&oe=68AF8B73');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -105,7 +104,7 @@
 <body class="flex flex-col items-center min-h-screen p-4">
 
     <!-- Top-left logo -->
-    <img id="top-left-logo" src="https://scontent.fcrk1-2.fna.fbcdn.net/v/t39.30808-6/481256091_1075839891225305_8701060058928039111_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=OCjjkE8jx7IQ7kNvwEp79Cp&_nc_oc=AdnDPmGq-xwFdLhQcze1O-nZmR0e5Nr8AX3fDmfdOLUPXALB4MNg7J65H2Q8TE5sY-4&_nc_zt=23&_nc_ht=scontent.fcrk1-2.fna&_nc_gid=nFjzVEKrI6WrhINW3zz39w&oh=00_AfVGG0LH9XXR_Q2o-1bm8ODj0HrJU7A7o6eu4L5YYjY7Cw&oe=68AFB084" alt="Logo">
+    <img id="top-left-logo" src="https://scontent.fcrk1-2.fna.fbcdn.net/v/t39.30808-6/481256091_1075839891225305_8701060058928039111_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=OCjjkE8jx7IQ7kNvwEp79Cp&_nc_oc=AdnDPmGq-xwFdLhQcze1O-nZmR0e5Nr8AX3fDmfdOLUP-d_29Lg7J65H2Q8TE5sY-4&_nc_zt=23&_nc_ht=scontent.fcrk1-2.fna&_nc_gid=nFjzVEKrI6WrhINW3zz39w&oh=00_AfVGG0LH9XXR_Q2o-1bm8ODj0HrJU7A7o6eu4L5YYjY7Cw&oe=68AFB084" alt="Logo">
 
     <!-- New Event Selector Dropdown -->
     <div class="event-selector-container">
@@ -169,8 +168,9 @@
         // --- Firebase Service Instances ---
         let db;
         let auth;
-        let userId;
-        const EVENTS_COLLECTION = "events";
+        // The collection path is now constructed to match your security rules
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const EVENTS_COLLECTION_PATH = `artifacts/${appId}/public/data/events`;
 
         // --- DOM Element References ---
         const statusMessage = document.getElementById('status-message');
@@ -186,10 +186,9 @@
         let currentDepartmentCharts = []; // Array to store chart instances for the slider view
 
         // --- Firebase Initialization and Auth Setup ---
-        const setupFirebase = async () => {
+        const setupFirebase = () => {
             try {
-                // IMPORTANT: The following variables are provided by the hosting environment.
-                  const firebaseConfig = {
+                const firebaseConfig = {
                     apiKey: "AIzaSyDCRT5OxfwUD25pS6igy8v3xYlaGmMXK_0",
                     authDomain: "event-calendar-prototype-b11b6.firebaseapp.com",
                     projectId: "event-calendar-prototype-b11b6",
@@ -197,30 +196,22 @@
                     messagingSenderId: "532386656284",
                     appId: "1:532386656284:web:fd4533fb0f54b198752fd9",
                     measurementId: "G-J10NDCD212"
-                  };
-                 const app = initializeApp(firebaseConfig);
-                  const analytics = getAnalytics(app);
-                
+                };
+
                 const app = window.firebase.initializeApp(firebaseConfig);
                 auth = window.firebase.getAuth(app);
                 db = window.firebase.getFirestore(app);
 
-                // Authenticate the user using the provided token or anonymously
-                if (initialAuthToken) {
-                    await window.firebase.signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await window.firebase.signInAnonymously(auth);
-                }
-                
-                // Set the user ID for Firestore operations
-                userId = auth.currentUser.uid;
-                
-                statusMessage.textContent = "Connected to the cloud. Loading events...";
-                statusMessage.classList.remove('hidden');
-                statusMessage.classList.add('bg-gray-100', 'text-gray-500');
-
-                fetchEventsAndInitialData();
-
+                window.firebase.onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        statusMessage.textContent = "Connected to the cloud. Loading events...";
+                        statusMessage.classList.remove('hidden');
+                        statusMessage.classList.add('bg-gray-100', 'text-gray-500');
+                        fetchEventsAndInitialData();
+                    } else {
+                        await window.firebase.signInAnonymously(auth);
+                    }
+                });
             } catch (error) {
                 console.error("Firebase setup failed:", error);
                 statusMessage.textContent = "Error setting up cloud connection. Please try again later.";
@@ -232,7 +223,7 @@
 
         // --- Fetch List of Events from Firestore ---
         const fetchEventsAndInitialData = async () => {
-            if (!db || !userId) {
+            if (!db) {
                 statusMessage.textContent = "Cloud connection not ready. Events cannot be retrieved.";
                 statusMessage.classList.remove('hidden');
                 statusMessage.classList.add('text-red-600', 'bg-red-100');
@@ -240,12 +231,12 @@
             }
 
             try {
-                const eventsRef = window.firebase.collection(db, `artifacts/${auth.app.options.projectId}/users/${userId}/${EVENTS_COLLECTION}`);
+                // The collection reference now points to the full path.
+                const eventsRef = window.firebase.collection(db, EVENTS_COLLECTION_PATH);
                 const querySnapshot = await window.firebase.getDocs(eventsRef);
 
                 const eventNames = querySnapshot.docs.map(doc => doc.id);
                 
-                // Clear and populate the event selector dropdown
                 eventSelector.innerHTML = '';
                 if (eventNames.length > 0) {
                     eventNames.forEach(name => {
@@ -254,7 +245,7 @@
                         option.textContent = name;
                         eventSelector.appendChild(option);
                     });
-                    eventSelector.value = eventNames[0]; // Select the first event by default
+                    eventSelector.value = eventNames[0];
                     loadAndRenderData(eventNames[0]);
                 } else {
                     const option = document.createElement('option');
@@ -265,13 +256,12 @@
                     statusMessage.classList.remove('hidden');
                     statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
                     statusMessage.classList.add('text-yellow-600', 'bg-yellow-100');
-                    // Hide charts and slider if no data
                     departmentProgramBarChartsContainer.classList.add('hidden');
                     departmentSlider.parentElement.classList.add('hidden');
                 }
             } catch (error) {
                 console.error("Error fetching events:", error);
-                statusMessage.textContent = "Error loading events. Please try again.";
+                statusMessage.textContent = "Error loading events. Please check your Firebase permissions.";
                 statusMessage.classList.remove('hidden');
                 statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
                 statusMessage.classList.add('text-red-600', 'bg-red-100');
@@ -293,14 +283,14 @@
             statusMessage.classList.add('text-gray-500', 'bg-gray-100');
 
             try {
-                const docRef = window.firebase.doc(db, `artifacts/${auth.app.options.projectId}/users/${userId}/${EVENTS_COLLECTION}`, eventName);
+                // The document reference now uses the correct full path.
+                const docRef = window.firebase.doc(db, EVENTS_COLLECTION_PATH, eventName);
                 const docSnap = await window.firebase.getDoc(docRef);
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     const rawData = JSON.parse(data.data);
                     
-                    // Convert raw CSV-like data to the structured format for charts
                     studentData = parseRawData(rawData);
                     
                     if (studentData.length > 0) {
@@ -320,7 +310,6 @@
                         statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
                         statusMessage.classList.add('text-yellow-600', 'bg-yellow-100');
                         
-                        // Hide charts and slider if no data
                         departmentProgramBarChartsContainer.classList.add('hidden');
                         departmentSlider.parentElement.classList.add('hidden');
                     }
@@ -330,7 +319,6 @@
                     statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
                     statusMessage.classList.add('text-yellow-600', 'bg-yellow-100');
                     
-                    // Hide charts and slider if no data
                     departmentProgramBarChartsContainer.classList.add('hidden');
                     departmentSlider.parentElement.classList.add('hidden');
                 }
@@ -343,7 +331,6 @@
             }
         };
 
-        // --- Utility function to parse raw CSV data into a structured format ---
         const parseRawData = (rows) => {
             const data = [];
             if (rows.length < 2) return data;
@@ -352,7 +339,6 @@
             const dataRows = rows.slice(1);
             
             dataRows.forEach(row => {
-                // Ensure row has at least 15 columns as per the CSV structure
                 if (row.length >= 15 && row[0] && row[1]) {
                     data.push({
                         department: row[0].trim(),
@@ -383,15 +369,12 @@
             return data;
         };
 
-        // --- Initialize the Department Slider ---
         const initializeDepartmentSlider = (data) => {
             departments = [...new Set(data.map(row => row.department))].sort();
             
-            // Set slider properties based on the number of departments
             departmentSlider.max = departments.length > 0 ? departments.length - 1 : 0;
-            departmentSlider.value = 0; // Start at the first department
+            departmentSlider.value = 0;
             
-            // Initial render based on the first department
             if (departments.length > 0) {
                 const initialDepartment = departments[departmentSlider.value];
                 departmentNameSpan.textContent = initialDepartment;
@@ -403,7 +386,6 @@
                 chartsPlaceholder.classList.remove('hidden');
             }
 
-            // Add event listener to handle slider changes
             departmentSlider.oninput = (event) => {
                 const selectedIndex = parseInt(event.target.value);
                 const selectedDepartment = departments[selectedIndex];
@@ -412,23 +394,18 @@
             };
         };
 
-        // --- Render a single Department's Program Bar Chart AND overall bar chart if needed ---
         const renderDepartmentProgramCharts = (data, departmentName) => {
-            // Destroy all previous chart instances
             currentDepartmentCharts.forEach(chart => chart.destroy());
             currentDepartmentCharts = [];
-            departmentProgramBarChartsContainer.innerHTML = ''; // Clear previous chart
+            departmentProgramBarChartsContainer.innerHTML = '';
 
-            // Filter data for the selected department
             const deptData = data.filter(row => row.department === departmentName);
 
-            // Calculate overall totals for the department
             const overallDeptPresent = deptData.reduce((sum, program) => 
                 sum + program.year1.present + program.year2.present + program.year3.present + program.year4.present, 0);
             const overallDeptAbsent = deptData.reduce((sum, program) =>
                 sum + program.year1.absent + program.year2.absent + program.year3.absent + program.year4.absent, 0);
 
-            // Create and render the overall department chart (no longer conditional)
             const overallDeptChartDiv = document.createElement('div');
             overallDeptChartDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md mb-6';
             overallDeptChartDiv.innerHTML = `
@@ -483,11 +460,9 @@
             });
             currentDepartmentCharts.push(newChart);
             
-            // Render individual charts for each program, broken down by year
             deptData.forEach(program => {
                 const programName = program.program;
                 
-                // Create container and canvas for the program's chart
                 const programChartDiv = document.createElement('div');
                 programChartDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md';
                 programChartDiv.innerHTML = `
@@ -585,7 +560,6 @@
             });
         };
         
-        // --- Render Overall Bar Chart with Percentages ---
         const renderOverallBarChart = (data) => {
             const overallPresent = data.reduce((sum, row) => sum + row.year1.present + row.year2.present + row.year3.present + row.year4.present, 0);
             const overallAbsent = data.reduce((sum, row) => sum + row.year1.absent + row.year2.absent + row.year3.absent + row.year4.absent, 0);
@@ -644,13 +618,11 @@
             });
         };
         
-        // --- Event Listener for the Event Selector Dropdown ---
         eventSelector.addEventListener('change', (event) => {
             const selectedEventName = event.target.value;
             loadAndRenderData(selectedEventName);
         });
 
-        // --- Initial App Setup ---
         document.addEventListener('DOMContentLoaded', () => {
             setupFirebase();
         });

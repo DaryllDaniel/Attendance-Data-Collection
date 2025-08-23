@@ -107,10 +107,17 @@
             <div id="pie-charts-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full h-auto mb-6">
                 <p id="pie-charts-placeholder" class="text-gray-500 text-center col-span-full">Charts will appear here after data is loaded.</p>
             </div>
+
+            <!-- Button to toggle program charts -->
+            <div class="flex justify-center my-6">
+                <button id="toggle-programs-btn" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105">
+                    Show Program Details
+                </button>
+            </div>
             
             <!-- Program Bar Charts Container (Re-added) -->
-            <div id="program-bar-charts-container" class="flex flex-col gap-8 w-full h-auto">
-                <p id="program-bar-charts-placeholder" class="text-gray-500 text-center hidden">Program charts will appear here...</p>
+            <div id="program-bar-charts-container" class="flex flex-col gap-8 w-full h-auto hidden">
+                <!-- Program charts will be rendered here dynamically -->
             </div>
 
         </div>
@@ -130,8 +137,7 @@
         const pieChartsContainer = document.getElementById('pie-charts-container');
         const pieChartsPlaceholder = document.getElementById('pie-charts-placeholder');
         const programBarChartsContainer = document.getElementById('program-bar-charts-container');
-        const programBarChartsPlaceholder = document.getElementById('program-bar-charts-placeholder');
-
+        const toggleProgramsBtn = document.getElementById('toggle-programs-btn');
 
         let studentData = [];
         let chartInstances = {}; // Combined object to store all chart instances
@@ -404,13 +410,6 @@
         const renderProgramBarCharts = (data) => {
             programBarChartsContainer.innerHTML = ''; // Clear previous charts
             
-            // Show or hide placeholder based on whether there's data
-            if (data.length > 0) {
-                programBarChartsPlaceholder.classList.add('hidden');
-            } else {
-                programBarChartsPlaceholder.classList.remove('hidden');
-            }
-
             // Group data by department
             const groupedData = data.reduce((acc, row) => {
                 if (!acc[row.department]) {
@@ -517,8 +516,8 @@
                                     }
                                     const value = context.raw;
                                     const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
-                                    const percentage = (value / total) * 100;
-                                    return `${label}${value}`;
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
+                                    return `${label}${value} (${percentage}%)`;
                                 }
                             }
                         }
@@ -588,9 +587,22 @@
             });
         };
         
+        // --- Event Listener for the button ---
+        const setupEventListeners = () => {
+            toggleProgramsBtn.addEventListener('click', () => {
+                const isHidden = programBarChartsContainer.classList.toggle('hidden');
+                if (isHidden) {
+                    toggleProgramsBtn.textContent = 'Show Program Details';
+                } else {
+                    toggleProgramsBtn.textContent = 'Hide Program Details';
+                }
+            });
+        };
+
         // --- Initial App Setup ---
         document.addEventListener('DOMContentLoaded', () => {
             setupFirebase();
+            setupEventListeners();
         });
     </script>
 </body>

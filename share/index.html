@@ -74,11 +74,6 @@
                 <p id="pie-charts-placeholder" class="text-gray-500 text-center col-span-full">Charts will appear here after data is loaded.</p>
             </div>
 
-            <!-- Program Bar Charts Container -->
-            <div id="program-bar-charts-container" class="flex flex-col gap-8 w-full h-auto">
-                <p id="program-bar-charts-placeholder" class="text-gray-500 text-center hidden">Program charts will appear here...</p>
-            </div>
-
         </div>
 
     </div>
@@ -95,7 +90,6 @@
         const statusMessage = document.getElementById('status-message');
         const pieChartsContainer = document.getElementById('pie-charts-container');
         const pieChartsPlaceholder = document.getElementById('pie-charts-placeholder');
-        const programBarChartsContainer = document.getElementById('program-bar-charts-container');
 
         let studentData = [];
         let chartInstances = {}; // Combined object to store all chart instances
@@ -163,7 +157,6 @@
                             statusMessage.textContent = "Data retrieved successfully!";
                             statusMessage.style.color = '#10b981';
                             renderPieCharts(studentData);
-                            renderProgramBarCharts(studentData);
                             renderOverallBarChart(studentData);
                         } else {
                             statusMessage.textContent = "No student data found in the cloud.";
@@ -363,128 +356,6 @@
             chartInstances[canvasId] = chart;
         };
 
-
-        // --- Render Program Bar Charts and Multi-Program Pie Charts ---
-        const renderProgramBarCharts = (data) => {
-            programBarChartsContainer.innerHTML = ''; // Clear previous charts
-            
-            // Group data by department
-            const groupedData = data.reduce((acc, row) => {
-                if (!acc[row.department]) {
-                    acc[row.department] = [];
-                }
-                const totalPresent = row.year1.present + row.year2.present + row.year3.present + row.year4.present;
-                const totalAbsent = row.year1.absent + row.year2.absent + row.year3.absent + row.year4.absent;
-                const total = totalPresent + totalAbsent;
-                acc[row.department].push({
-                    program: row.program,
-                    present: totalPresent,
-                    absent: totalAbsent,
-                    total: total
-                });
-                return acc;
-            }, {});
-            
-            // Loop through each department and its programs
-            Object.keys(groupedData).forEach(departmentName => {
-                const departmentPrograms = groupedData[departmentName];
-                const deptProgramsDiv = document.createElement('div');
-                deptProgramsDiv.className = 'p-4 bg-white rounded-lg shadow-md w-full';
-
-                const deptTitle = document.createElement('h3');
-                deptTitle.className = 'font-bold text-xl text-blue-800 mb-4 text-center';
-                deptTitle.textContent = `${departmentName} Programs`;
-                deptProgramsDiv.appendChild(deptTitle);
-
-                const programChartGrid = document.createElement('div');
-                programChartGrid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6';
-                
-                departmentPrograms.forEach(program => {
-                    const programChartDiv = document.createElement('div');
-                    programChartDiv.className = 'p-4 bg-gray-50 rounded-lg shadow-sm';
-                    
-                    const heading = document.createElement('h4');
-                    heading.className = 'font-semibold text-center text-md mb-2 text-gray-700';
-                    heading.textContent = program.program;
-                    
-                    const chartContainer = document.createElement('div');
-                    chartContainer.className = 'chart-container';
-                    const canvas = document.createElement('canvas');
-                    canvas.id = `prog-bar-chart-${program.program.replace(/[^a-zA-Z0-9]/g, '')}`;
-                    
-                    chartContainer.appendChild(canvas);
-                    programChartDiv.appendChild(heading);
-                    programChartDiv.appendChild(chartContainer);
-                    programChartGrid.appendChild(programChartDiv);
-
-                    updateProgramBarChart(canvas.id, program.present, program.absent, program.total);
-                });
-
-                deptProgramsDiv.appendChild(programChartGrid);
-                programBarChartsContainer.appendChild(deptProgramsDiv);
-            });
-        };
-        
-        // --- Helper function to create/update a bar chart with percentages ---
-        const updateProgramBarChart = (canvasId, presentCount, absentCount, totalCount) => {
-            const canvas = document.getElementById(canvasId);
-            if (!canvas) {
-                console.error(`Canvas element with ID '${canvasId}' not found.`);
-                return;
-            }
-
-            if (chartInstances[canvasId]) {
-                chartInstances[canvasId].destroy();
-            }
-
-            const chart = new Chart(canvas, {
-                type: 'bar',
-                data: {
-                    labels: ['Present', 'Absent', 'Total'],
-                    datasets: [{
-                        label: 'Attendance',
-                        data: [presentCount, absentCount, totalCount],
-                        backgroundColor: ['#2563eb', '#dc2626', '#16a34a'],
-                        borderColor: ['#1e40af', '#b91c1c', '#15803d'],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Number of Students'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    const value = context.raw;
-                                    const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
-                                    const percentage = (value / total) * 100;
-                                    return `${label}${value}`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-
-            chartInstances[canvasId] = chart;
-        };
 
         // --- Render Overall Bar Chart with Percentages ---
         const renderOverallBarChart = (data) => {

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Data Viewer</title>
+    <title>Aggregated Attendance Viewer</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Firebase SDKs from CDN -->
@@ -11,7 +11,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+        
         // Expose Firebase services to the global scope
         window.firebase = {
             initializeApp,
@@ -31,7 +31,7 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
-            background-image: url('https://scontent.fcrk1-1.fna.fbcdn.net/v/t39.30808-6/534829113_1219906786818614_3623306942044619088_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=IVr9Yr1-pvUQkNvwFa9iO5&_nc_oc=AdntxIkfqY4bkAXBlJJlzddtb7L6hdtB7b9Szq2OuBkDf7fySj9CgdnctopvIdlkE_aA&_nc_zt=23&_nc_ht=scontent.fcrk1-1.fna&_nc_gid=wsNnun-HKCpyMJFkIDXHpA&oh=00_AfUlrYAo7YO63AptckNh1w5AiCyZbvdvxxE5l_uo6vsQw&oe=68AF8B73');
+            background-image: url('https://scontent.fcrk1-1.fna.fbcdn.net/v/t39.30808-6/534829113_1219906786818614_3623306942044619088_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=IVr9Yr1-pvUQkNvwFa9iO5&_nc_oc=AdntxIkfqY4bkAXBlJJlzddtb7L6hdtB7b9Szq2OuBkDf5fySj9CgdnctopvIdlkE_aA&_nc_zt=23&_nc_ht=scontent.fcrk1-1.fna&_nc_gid=wsNnun-HKCpyMJFkIDXHpA&oh=00_AfUlrYAo7YO63AptckNh1w5AiCyZbvdvxxE5l_uo6vsQw&oe=68AF8B73');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -91,6 +91,40 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
+        /* Styles for the horizontal scroll slider */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .slider-wrapper {
+            flex-grow: 1;
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
+            scrollbar-width: none; /* Firefox */
+        }
+
+        .slider-wrapper::-webkit-scrollbar {
+            display: none; /* Safari and Chrome */
+        }
+        
+        .slider-item {
+            display: inline-block;
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        
+        .slider-item.active {
+            background-color: #1d4ed8;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        
         @media (max-width: 640px) {
             #top-left-logo {
                 width: 80px;
@@ -102,13 +136,13 @@
     <!-- Top-left logo -->
     <img id="top-left-logo" src="https://scontent.fcrk1-4.fna.fbcdn.net/v/t39.30808-6/537430317_122096293532993050_6396531567539471614_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=WSX_ci11nyQQ7kNvwEt-pXT&_nc_oc=Adn4_s5UW7ucupcP6SwXVA6JsI0fFG59JlUg4Fl-oZixJ3AvkBxrOUTP9DBFT9lC0dY&_nc_zt=23&_nc_ht=scontent.fcrk1-4.fna&_nc_gid=KnzKC5VvxRFOiRXB42TeGA&oh=00_AfWzidd9JfjRRoaZAQigWK_JOqp-X-Ccys0BnucXvXIPaQ&oe=68AFA576" alt="Logo">
 
-    <div class="text-center mb-8 px-4 w-full z-20 flex justify-between items-center">
+    <div class="text-center mb-8 px-4 w-full z-20 flex flex-col sm:flex-row justify-between items-center">
         <div class="flex-1">
-            <h1 class="text-2xl md:text-4xl font-extrabold text-white mb-2 drop-shadow-lg text-center">Student Data Viewer</h1>
-            <p class="text-gray-200 drop-shadow-md text-center">View event data from the cloud.</p>
+            <h1 class="text-2xl md:text-4xl font-extrabold text-white mb-2 drop-shadow-lg text-center">Aggregated Attendance Viewer</h1>
+            <p class="text-gray-200 drop-shadow-md text-center">Visualize attendance data from aggregated reports.</p>
         </div>
-        <div class="flex items-center justify-end">
-            <!-- Dropdown for selecting events, now in the top-right corner -->
+        <div class="mt-4 sm:mt-0">
+            <!-- Dropdown for selecting events -->
             <select id="event-selector" class="p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200">
                 <option value="" disabled selected>Loading events...</option>
             </select>
@@ -118,33 +152,43 @@
     <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col gap-8 z-20">
         <!-- Overall Attendance Summary -->
         <div id="overall-chart-container" class="flex-1 hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Overall Attendance Summary</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Overall Attendance</h2>
             <div class="flex justify-center items-center h-80">
-                <canvas id="overallPieChart" class="max-h-full max-w-full"></canvas>
+                <canvas id="overallBarChart" class="max-h-full max-w-full"></canvas>
             </div>
         </div>
 
-        <!-- Department and Program Details -->
-        <div id="department-details-container" class="flex-1 hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Department and Program Details</h2>
-            <div class="flex flex-col md:flex-row items-center justify-center gap-4 mb-6">
-                <label for="department-selector" class="text-gray-700 font-medium">Select Department:</label>
-                <select id="department-selector" class="w-full md:w-3/4 p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"></select>
+        <!-- Department Breakdown Slider -->
+        <div id="department-slider-container" class="hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Departments</h2>
+            <div class="slider-container">
+                <button id="department-prev" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-full transition-all duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                </button>
+                <div id="department-slider" class="slider-wrapper"></div>
+                <button id="department-next" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-full transition-all duration-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Department and Program Charts -->
+        <div id="department-charts-container" class="flex flex-col md:flex-row justify-center gap-8 items-start mt-6 hidden">
+            <!-- Department Attendance Bar Chart -->
+            <div class="w-full md:w-1/2">
+                <div class="flex justify-center items-center h-64 md:h-80">
+                    <canvas id="departmentYearChart" class="max-h-full max-w-full"></canvas>
+                </div>
             </div>
 
-            <div class="flex flex-col md:flex-row justify-center gap-8 items-start">
-                <!-- Department Attendance Pie Chart -->
-                <div class="w-full md:w-1/2">
-                    <div class="flex justify-center items-center h-64 md:h-80">
-                        <canvas id="departmentPieChart" class="max-h-full max-w-full"></canvas>
-                    </div>
-                </div>
-
-                <!-- Program Attendance Bar Graph -->
-                <div class="w-full md:w-1/2">
-                    <div class="flex justify-center items-center h-64 md:h-80">
-                        <canvas id="programBarGraph" class="max-h-full max-w-full"></canvas>
-                    </div>
+            <!-- Program Attendance Bar Graph -->
+            <div class="w-full md:w-1/2">
+                <div class="flex justify-center items-center h-64 md:h-80">
+                    <canvas id="programAllChart" class="max-h-full max-w-full"></canvas>
                 </div>
             </div>
         </div>
@@ -173,22 +217,26 @@
         const EVENTS_COLLECTION_NAME = "event_attendance_tracker";
         const FIREBASE_PROJECT_ID = "event-calendar-prototype-b11b6";
         const PUBLIC_DATA_PATH = `artifacts/${FIREBASE_PROJECT_ID}/public/data/${EVENTS_COLLECTION_NAME}`;
-        let overallData = null;
-        let overallPieChart = null;
-        let departmentPieChart = null;
-        let programBarChart = null;
+        let aggregatedData = null;
+        let overallBarChart = null;
+        let departmentYearChart = null;
+        let programAllChart = null;
         const CHART_COLORS = ['#3B82F6', '#EF4444']; // Blue for Present, Red for Absent
+        let selectedDepartment = null;
 
         // --- DOM Element References ---
         const eventSelector = document.getElementById('event-selector');
-        const departmentSelector = document.getElementById('department-selector');
         const overallChartContainer = document.getElementById('overall-chart-container');
-        const departmentDetailsContainer = document.getElementById('department-details-container');
+        const departmentSliderContainer = document.getElementById('department-slider-container');
+        const departmentChartsContainer = document.getElementById('department-charts-container');
         const statusMessage = document.getElementById('status-message');
         const modal = document.getElementById('custom-modal');
         const modalTitle = document.getElementById('modal-title');
         const modalMessage = document.getElementById('modal-message');
         const modalOkButton = document.getElementById('modal-ok-button');
+        const departmentSlider = document.getElementById('department-slider');
+        const departmentPrevBtn = document.getElementById('department-prev');
+        const departmentNextBtn = document.getElementById('department-next');
 
         // --- Event Listeners ---
         eventSelector.addEventListener('change', (e) => {
@@ -198,11 +246,12 @@
             }
         });
 
-        departmentSelector.addEventListener('change', (e) => {
-            const department = e.target.value;
-            if (department && overallData) {
-                drawDepartmentCharts(department, overallData);
-            }
+        departmentPrevBtn.addEventListener('click', () => {
+            departmentSlider.scrollBy({ left: -200, behavior: 'smooth' });
+        });
+
+        departmentNextBtn.addEventListener('click', () => {
+            departmentSlider.scrollBy({ left: 200, behavior: 'smooth' });
         });
 
         modalOkButton.addEventListener('click', () => {
@@ -287,7 +336,8 @@
             statusMessage.classList.add('bg-gray-100', 'text-gray-500');
             eventSelector.disabled = true;
             overallChartContainer.classList.add('hidden');
-            departmentDetailsContainer.classList.add('hidden');
+            departmentSliderContainer.classList.add('hidden');
+            departmentChartsContainer.classList.add('hidden');
 
             try {
                 const docRef = window.firebase.doc(db, PUBLIC_DATA_PATH, eventName);
@@ -297,24 +347,29 @@
                     const data = docSnap.data();
                     const csvData = JSON.parse(data.data);
                     
-                    if (csvData.length > 1) {
-                        overallData = processAttendanceData(csvData);
-                        drawOverallChart(overallData);
-                        populateDepartmentSelector(overallData);
+                    aggregatedData = processAggregatedData(csvData);
+                    
+                    if (aggregatedData) {
+                        drawOverallChart(aggregatedData);
+                        populateDepartmentSlider(aggregatedData);
                         overallChartContainer.classList.remove('hidden');
-                        departmentDetailsContainer.classList.remove('hidden');
+                        departmentSliderContainer.classList.remove('hidden');
+                        departmentChartsContainer.classList.remove('hidden');
+                        statusMessage.textContent = "Data fetched successfully! Select a department to view details.";
+                        statusMessage.classList.remove('bg-gray-100', 'text-gray-500');
+                        statusMessage.classList.add('bg-green-100', 'text-green-600');
                     } else {
-                        showModal("Data Error", "The selected event has no student data.");
-                        overallData = null;
-                        statusMessage.textContent = "No data found for this event.";
-                        statusMessage.classList.add('bg-yellow-100', 'text-yellow-600');
+                        aggregatedData = null;
+                        overallChartContainer.classList.add('hidden');
+                        departmentSliderContainer.classList.add('hidden');
+                        departmentChartsContainer.classList.add('hidden');
+                        statusMessage.textContent = "Data could not be processed due to a format error.";
+                        statusMessage.classList.add('bg-red-100', 'text-red-600');
                     }
-                    statusMessage.textContent = "Data fetched successfully!";
-                    statusMessage.classList.remove('bg-gray-100', 'text-gray-500');
-                    statusMessage.classList.add('bg-green-100', 'text-green-600');
+
                 } else {
                     showModal("Fetch Failed", `No data found for event: "${eventName}".`);
-                    overallData = null;
+                    aggregatedData = null;
                     statusMessage.textContent = `No data found for event: "${eventName}".`;
                     statusMessage.classList.add('bg-yellow-100', 'text-yellow-600');
                 }
@@ -328,110 +383,109 @@
             }
         };
 
-        // --- Data Processing Function ---
-        const processAttendanceData = (csvData) => {
+        // --- Data Processing Function for Aggregated Data ---
+        const processAggregatedData = (csvData) => {
             const headers = csvData[0].map(h => h.trim());
             const departmentIndex = headers.indexOf('Department');
             const programIndex = headers.indexOf('Program');
-            const attendanceIndex = headers.indexOf('Attendance');
+            const yearLevels = ['1st', '2nd', '3rd', '4th'];
 
-            if (departmentIndex === -1 || programIndex === -1 || attendanceIndex === -1) {
-                showModal("Data Format Error", "CSV file must contain 'Department', 'Program', and 'Attendance' columns.");
+            if (departmentIndex === -1 || programIndex === -1 || !headers.some(h => h.includes('Present') || h.includes('Absent'))) {
+                showModal("Data Format Error", "CSV file must contain 'Department', 'Program', and attendance columns like '1st Year Present'.");
+                return null;
+            }
+            if (csvData.length <= 1) {
+                showModal("Data Error", "The selected event has no student data.");
                 return null;
             }
 
-            let overallPresent = 0;
-            let overallAbsent = 0;
+            const overall = { present: 0, absent: 0 };
             const departments = {};
 
             csvData.slice(1).forEach(row => {
                 const department = row[departmentIndex]?.trim();
                 const program = row[programIndex]?.trim();
-                const attendance = row[attendanceIndex]?.trim();
 
-                if (!department || !program || !attendance) return;
-
-                if (attendance.toLowerCase() === 'present') {
-                    overallPresent++;
-                } else if (attendance.toLowerCase() === 'absent') {
-                    overallAbsent++;
-                }
+                if (!department || !program) return;
 
                 if (!departments[department]) {
-                    departments[department] = { present: 0, absent: 0, programs: {} };
-                }
-
-                if (attendance.toLowerCase() === 'present') {
-                    departments[department].present++;
-                } else if (attendance.toLowerCase() === 'absent') {
-                    departments[department].absent++;
+                    departments[department] = {
+                        present: yearLevels.map(() => 0),
+                        absent: yearLevels.map(() => 0),
+                        programs: {}
+                    };
                 }
 
                 if (!departments[department].programs[program]) {
-                    departments[department].programs[program] = { present: 0, absent: 0 };
+                    departments[department].programs[program] = {
+                        present: 0,
+                        absent: 0
+                    };
                 }
 
-                if (attendance.toLowerCase() === 'present') {
-                    departments[department].programs[program].present++;
-                } else if (attendance.toLowerCase() === 'absent') {
-                    departments[department].programs[program].absent++;
-                }
+                yearLevels.forEach((year, i) => {
+                    const presentIndex = headers.indexOf(`${year} Year Present`);
+                    const absentIndex = headers.indexOf(`${year} Year Absent`);
+
+                    const presentCount = parseInt(row[presentIndex], 10) || 0;
+                    const absentCount = parseInt(row[absentIndex], 10) || 0;
+
+                    // Update overall data
+                    overall.present += presentCount;
+                    overall.absent += absentCount;
+
+                    // Update department data
+                    departments[department].present[i] += presentCount;
+                    departments[department].absent[i] += absentCount;
+
+                    // Update program data
+                    departments[department].programs[program].present += presentCount;
+                    departments[department].programs[program].absent += absentCount;
+                });
             });
 
-            return {
-                overall: { present: overallPresent, absent: overallAbsent },
-                departments: departments
-            };
+            return { overall, departments };
         };
 
         // --- Chart Drawing Functions ---
         const drawOverallChart = (data) => {
-            if (overallPieChart) {
-                overallPieChart.destroy();
+            if (overallBarChart) {
+                overallBarChart.destroy();
             }
 
-            const total = data.overall.present + data.overall.absent;
-            const presentPercentage = total > 0 ? (data.overall.present / total * 100).toFixed(2) : 0;
-            const absentPercentage = total > 0 ? (data.overall.absent / total * 100).toFixed(2) : 0;
-
-            const ctx = document.getElementById('overallPieChart').getContext('2d');
-            overallPieChart = new Chart(ctx, {
-                type: 'pie',
+            const ctx = document.getElementById('overallBarChart').getContext('2d');
+            overallBarChart = new Chart(ctx, {
+                type: 'bar',
                 data: {
                     labels: ['Present', 'Absent'],
-                    datasets: [{
-                        data: [data.overall.present, data.overall.absent],
-                        backgroundColor: CHART_COLORS,
-                        hoverOffset: 4
-                    }]
+                    datasets: [
+                        {
+                            label: 'Total Students',
+                            data: [data.overall.present, data.overall.absent],
+                            backgroundColor: CHART_COLORS
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
+                    scales: {
+                        x: {
+                            grid: { display: false }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Students'
+                            }
+                        }
+                    },
                     plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                font: {
-                                    size: 14
-                                }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.parsed;
-                                    const percentage = ((value / total) * 100).toFixed(2);
-                                    return `${context.label}: ${value} (${percentage}%)`;
-                                }
-                            }
-                        },
+                        legend: { display: false },
                         title: {
                             display: true,
-                            text: `Overall: ${presentPercentage}% Present, ${absentPercentage}% Absent`,
-                            font: {
-                                size: 16,
-                                weight: 'bold'
-                            },
+                            text: `Total Attendance: ${data.overall.present + data.overall.absent} Students`,
+                            font: { size: 16, weight: 'bold' },
                             color: '#1f2937'
                         }
                     }
@@ -443,137 +497,82 @@
             const departmentData = data.departments[departmentName];
             if (!departmentData) return;
 
-            // Draw Department Pie Chart
-            if (departmentPieChart) {
-                departmentPieChart.destroy();
-            }
-            const totalDept = departmentData.present + departmentData.absent;
-            const deptPresentPercentage = totalDept > 0 ? (departmentData.present / totalDept * 100).toFixed(2) : 0;
-            const deptAbsentPercentage = totalDept > 0 ? (departmentData.absent / totalDept * 100).toFixed(2) : 0;
+            // Destroy previous charts
+            if (departmentYearChart) departmentYearChart.destroy();
+            if (programAllChart) programAllChart.destroy();
 
-            const deptCtx = document.getElementById('departmentPieChart').getContext('2d');
-            departmentPieChart = new Chart(deptCtx, {
-                type: 'pie',
-                data: {
-                    labels: ['Present', 'Absent'],
-                    datasets: [{
-                        data: [departmentData.present, departmentData.absent],
-                        backgroundColor: CHART_COLORS,
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                            labels: {
-                                font: {
-                                    size: 12
-                                }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.parsed;
-                                    const percentage = ((value / totalDept) * 100).toFixed(2);
-                                    return `${context.label}: ${value} (${percentage}%)`;
-                                }
-                            }
-                        },
-                        title: {
-                            display: true,
-                            text: `Attendance for ${departmentName}: ${deptPresentPercentage}% Present`,
-                            font: {
-                                size: 14,
-                                weight: 'bold'
-                            },
-                            color: '#1f2937'
-                        }
-                    }
-                }
-            });
-
-            // Draw Program Bar Graph
-            if (programBarChart) {
-                programBarChart.destroy();
-            }
-            const programLabels = Object.keys(departmentData.programs);
-            const presentData = programLabels.map(program => departmentData.programs[program].present);
-            const absentData = programLabels.map(program => departmentData.programs[program].absent);
-            const programTotals = programLabels.map(program => departmentData.programs[program].present + departmentData.programs[program].absent);
-
-            const barCtx = document.getElementById('programBarGraph').getContext('2d');
-            programBarChart = new Chart(barCtx, {
+            const yearLabels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+            const departmentCtx = document.getElementById('departmentYearChart').getContext('2d');
+            departmentYearChart = new Chart(departmentCtx, {
                 type: 'bar',
                 data: {
-                    labels: programLabels,
+                    labels: yearLabels,
                     datasets: [
                         {
                             label: 'Present',
-                            data: presentData,
-                            backgroundColor: CHART_COLORS[0],
-                            barPercentage: 0.8
+                            data: departmentData.present,
+                            backgroundColor: CHART_COLORS[0]
                         },
                         {
                             label: 'Absent',
-                            data: absentData,
-                            backgroundColor: CHART_COLORS[1],
-                            barPercentage: 0.8
+                            data: departmentData.absent,
+                            backgroundColor: CHART_COLORS[1]
                         }
                     ]
                 },
                 options: {
                     responsive: true,
                     scales: {
-                        x: {
-                            stacked: true,
-                            title: {
-                                display: true,
-                                text: 'Program'
-                            }
-                        },
-                        y: {
-                            stacked: true,
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Number of Students'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    if (Number.isInteger(value)) {
-                                        return value;
-                                    }
-                                    return null;
-                                }
-                            }
-                        }
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true }
                     },
                     plugins: {
-                        legend: {
-                            position: 'top'
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const datasetIndex = context.datasetIndex;
-                                    const value = context.parsed.y;
-                                    const programIndex = context.dataIndex;
-                                    const totalForProgram = programTotals[programIndex];
-                                    const percentage = totalForProgram > 0 ? (value / totalForProgram * 100).toFixed(2) : 0;
-                                    return `${context.label}: ${value} (${percentage}%)`;
-                                }
-                            }
-                        },
+                        legend: { position: 'top' },
                         title: {
                             display: true,
-                            text: `Attendance per Program in ${departmentName}`,
-                            font: {
-                                size: 14,
-                                weight: 'bold'
-                            },
+                            text: `Attendance by Year for ${departmentName}`,
+                            font: { size: 14, weight: 'bold' },
+                            color: '#1f2937'
+                        }
+                    }
+                }
+            });
+
+            // Prepare data for the new program chart
+            const programs = Object.keys(departmentData.programs).sort();
+            const programPresentData = programs.map(p => departmentData.programs[p].present);
+            const programAbsentData = programs.map(p => departmentData.programs[p].absent);
+            
+            const programAllCtx = document.getElementById('programAllChart').getContext('2d');
+            programAllChart = new Chart(programAllCtx, {
+                type: 'bar',
+                data: {
+                    labels: programs,
+                    datasets: [
+                        {
+                            label: 'Present',
+                            data: programPresentData,
+                            backgroundColor: CHART_COLORS[0]
+                        },
+                        {
+                            label: 'Absent',
+                            data: programAbsentData,
+                            backgroundColor: CHART_COLORS[1]
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true }
+                    },
+                    plugins: {
+                        legend: { position: 'top' },
+                        title: {
+                            display: true,
+                            text: `Total Attendance by Program in ${departmentName}`,
+                            font: { size: 14, weight: 'bold' },
                             color: '#1f2937'
                         }
                     }
@@ -581,23 +580,42 @@
             });
         };
 
-        // --- Helper Functions ---
-        const populateDepartmentSelector = (data) => {
-            departmentSelector.innerHTML = '<option value="" disabled selected>Select a department</option>';
+        // --- UI Population Functions ---
+        const populateDepartmentSlider = (data) => {
+            departmentSlider.innerHTML = '';
             const departments = Object.keys(data.departments).sort();
             departments.forEach(dept => {
-                const option = document.createElement('option');
-                option.value = dept;
-                option.textContent = dept;
-                departmentSelector.appendChild(option);
+                const item = document.createElement('span');
+                item.textContent = dept;
+                item.classList.add('slider-item', 'bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
+                item.dataset.department = dept;
+                item.addEventListener('click', () => handleDepartmentSelect(dept));
+                departmentSlider.appendChild(item);
             });
-            // Automatically select the first department if available
+            
             if (departments.length > 0) {
-                departmentSelector.value = departments[0];
-                drawDepartmentCharts(departments[0], data);
+                handleDepartmentSelect(departments[0]);
             }
         };
 
+        // --- UI Interaction Handlers ---
+        const handleDepartmentSelect = (departmentName) => {
+            selectedDepartment = departmentName;
+            
+            // Update active state for department slider
+            document.querySelectorAll('#department-slider .slider-item').forEach(item => {
+                item.classList.remove('active', 'bg-blue-700', 'text-white');
+                item.classList.add('bg-gray-200', 'text-gray-800');
+                if (item.dataset.department === departmentName) {
+                    item.classList.add('active', 'bg-blue-700', 'text-white');
+                }
+            });
+
+            // Update charts
+            drawDepartmentCharts(departmentName, aggregatedData);
+        };
+        
+        // --- Helper Functions ---
         const showModal = (title, message) => {
             modalTitle.textContent = title;
             modalMessage.textContent = message;
@@ -611,4 +629,3 @@
     </script>
 </body>
 </html>
-

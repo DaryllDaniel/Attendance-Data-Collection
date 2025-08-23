@@ -32,31 +32,31 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
+<body class="bg-gray-100 flex flex-col items-center min-h-screen p-4">
 
     <!-- Separate div for title and description -->
     <div class="text-center mb-8 px-4">
         <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800 mb-2">Student Data Viewer</h1>
-        <p class="text-gray-600">This app retrieves student attendance data from the cloud to display charts, grouped by department.</p>
+        <p class="text-gray-600">Data retrieved successfully!</p>
     </div>
 
     <!-- Main Application Container -->
-    <div class="bg-white p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col lg:flex-row gap-8">
+    <div class="bg-white p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col gap-8">
 
         <!-- Data Display and Controls Section -->
         <div class="flex-1">
             <!-- Loading and Status Messages -->
-            <div id="status-message" class="text-center p-4 text-gray-500 font-medium bg-gray-100 rounded-lg mb-6">
+            <div id="status-message" class="text-center p-4 text-gray-500 font-medium bg-gray-100 rounded-lg mb-6 hidden">
                 Connecting to the cloud...
             </div>
         </div>
 
         <!-- Chart Section -->
-        <div class="flex-1 bg-gray-50 p-6 rounded-xl shadow-inner">
+        <div class="flex-1 bg-gray-50 p-6 rounded-xl shadow-inner w-full">
             <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Department and Program</h2>
             
             <!-- Overall Attendance Bar Chart -->
-            <div class="p-4 bg-white rounded-lg shadow-md mb-6">
+            <div class="p-4 bg-white rounded-lg shadow-md mb-6 w-full">
                 <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Overall Attendance Summary</h3>
                 <div class="w-full h-64">
                     <canvas id="overall-bar-chart"></canvas>
@@ -69,8 +69,8 @@
             </div>
 
             <!-- Program Bar Charts Container -->
-            <div id="program-bar-charts-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full h-auto">
-                <p id="program-bar-charts-placeholder" class="text-gray-500 text-center col-span-1 md:col-span-2 hidden">Program charts will appear here...</p>
+            <div id="program-bar-charts-container" class="flex flex-col gap-8 w-full h-auto">
+                <p id="program-bar-charts-placeholder" class="text-gray-500 text-center hidden">Program charts will appear here...</p>
             </div>
 
         </div>

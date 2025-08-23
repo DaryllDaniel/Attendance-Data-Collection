@@ -218,9 +218,17 @@
                 // const initialAuthToken = null; // Or a token you manage
                 // const appId = firebaseConfig.projectId; // Or a specific app ID you manage
 
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                 const firebaseConfig = {
+                    apiKey: "AIzaSyDCRT5OxfwUD25pS6igy8v3xYlaGmMXK_0",
+                    authDomain: "event-calendar-prototype-b11b6.firebaseapp.com",
+                    projectId: "event-calendar-prototype-b11b6",
+                    storageBucket: "event-calendar-prototype-b11b6.firebasestorage.app",
+                    messagingSenderId: "532386656284",
+                    appId: "1:532386656284:web:fd4533fb0f54b198752fd9",
+                    measurementId: "G-J10NDCD212"
+                  };
+                 const app = initializeApp(firebaseConfig);
+                  const analytics = getAnalytics(app);
 
                 const app = window.firebase.initializeApp(firebaseConfig);
                 auth = window.firebase.getAuth(app);

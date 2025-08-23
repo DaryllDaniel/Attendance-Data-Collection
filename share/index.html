@@ -93,7 +93,7 @@
 
         <!-- Chart Section -->
         <div class="flex-1 bg-gray-50 bg-opacity-90 p-6 rounded-xl shadow-inner w-full">
-            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Department and Program</h2>
+            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4 text-center">Department and Program Attendance</h2>
             
             <!-- Overall Attendance Bar Chart -->
             <div class="p-4 bg-white bg-opacity-90 rounded-lg shadow-md mb-6 w-full">
@@ -103,35 +103,14 @@
                 </div>
             </div>
 
-            <!-- Department Bar Charts Container -->
+            <!-- Department and Program Combined Bar Charts Container -->
             <div class="my-8">
-                <h3 class="text-xl md:text-2xl font-bold text-gray-700 mb-4 text-center">Department Attendance</h3>
-                <div id="department-bar-charts-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full h-auto">
+                <h3 class="text-xl md:text-2xl font-bold text-gray-700 mb-4 text-center">Department and Program Details</h3>
+                <div id="department-program-bar-charts-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full h-auto">
                     <p id="charts-placeholder" class="text-gray-500 text-center col-span-full">Charts will appear here after data is loaded.</p>
                 </div>
             </div>
-
-            <!-- Program Distribution Bar Charts Container (New section) -->
-            <div class="my-8">
-                <h3 class="text-xl md:text-2xl font-bold text-gray-700 mb-4 text-center">Program Distribution within Departments</h3>
-                <div id="program-distribution-bar-charts-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full h-auto">
-                </div>
-            </div>
-
-            <!-- Button to toggle program details -->
-            <div class="flex justify-center my-6">
-                <button id="toggle-programs-btn" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105">
-                    Show Program Details
-                </button>
-            </div>
-            
-            <!-- Program Details Bar Charts Container (Toggled by button) -->
-            <div id="program-bar-charts-container" class="flex flex-col gap-8 w-full h-auto hidden">
-                <!-- Program charts will be rendered here dynamically -->
-            </div>
-
         </div>
-
     </div>
 
     <script type="module">
@@ -144,14 +123,11 @@
 
         // --- DOM Element References ---
         const statusMessage = document.getElementById('status-message');
-        const departmentBarChartsContainer = document.getElementById('department-bar-charts-container');
+        const departmentProgramBarChartsContainer = document.getElementById('department-program-bar-charts-container');
         const chartsPlaceholder = document.getElementById('charts-placeholder');
-        const programDistributionBarChartsContainer = document.getElementById('program-distribution-bar-charts-container');
-        const programBarChartsContainer = document.getElementById('program-bar-charts-container');
-        const toggleProgramsBtn = document.getElementById('toggle-programs-btn');
 
         let studentData = [];
-        let chartInstances = {}; // Combined object to store all chart instances
+        let chartInstances = {}; // Object to store all chart instances
         let overallBarChartInstance = null; // Instance for the overall bar chart
 
         // --- Firebase Initialization and Auth Setup ---
@@ -215,10 +191,8 @@
                         if (studentData.length > 0) {
                             statusMessage.textContent = "Data retrieved successfully!";
                             statusMessage.style.color = '#10b981';
-                            renderDepartmentBarCharts(studentData);
-                            renderProgramDistributionBarCharts(studentData);
+                            renderDepartmentProgramCharts(studentData);
                             renderOverallBarChart(studentData);
-                            renderProgramBarCharts(studentData); // Pre-render but keep hidden
                         } else {
                             statusMessage.textContent = "No student data found in the cloud.";
                             statusMessage.style.color = '#dc2626';
@@ -240,146 +214,41 @@
             });
         };
         
-        // --- Helper function to create/update a standard bar chart (vertical) ---
-        const updateVerticalBarChart = (canvasId, presentData, absentData, title) => {
-            const canvas = document.getElementById(canvasId);
-            if (!canvas) {
-                console.error(`Canvas element with ID '${canvasId}' not found.`);
-                return;
-            }
-
-            if (chartInstances[canvasId]) {
-                chartInstances[canvasId].destroy();
-            }
-
-            const chart = new Chart(canvas, {
-                type: 'bar',
-                data: {
-                    labels: ['Present', 'Absent'],
-                    datasets: [{
-                        label: title,
-                        data: [presentData, absentData],
-                        backgroundColor: ['#2563eb', '#dc2626'],
-                        borderColor: ['#1e40af', '#b91c1c'],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false // No need for legend on this chart
-                        },
-                        title: {
-                            display: true,
-                            text: title,
-                            font: {
-                                size: 16,
-                                weight: 'bold'
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.raw;
-                                    const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
-                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
-                                    return ` ${context.label}: ${value} (${percentage}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            chartInstances[canvasId] = chart;
-        };
-        
-        // --- Helper function for horizontal bar charts ---
-        const updateHorizontalBarChart = (canvasId, labels, data, title) => {
-            const canvas = document.getElementById(canvasId);
-            if (!canvas) {
-                console.error(`Canvas element with ID '${canvasId}' not found.`);
-                return;
-            }
-
-            if (chartInstances[canvasId]) {
-                chartInstances[canvasId].destroy();
-            }
-
-            const chart = new Chart(canvas, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Total Students',
-                        data: data,
-                        backgroundColor: '#10b981',
-                        borderColor: '#059669',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    indexAxis: 'y', // This makes the bars horizontal
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        x: {
-                            beginAtZero: true
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        title: {
-                            display: true,
-                            text: title,
-                            font: {
-                                size: 16,
-                                weight: 'bold'
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.raw;
-                                    const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
-                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
-                                    return ` ${context.label}: ${value} (${percentage}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            chartInstances[canvasId] = chart;
-        };
-
-        // --- Render Department Bar Charts ---
-        const renderDepartmentBarCharts = (data) => {
+        // --- Render Department and Program Combined Bar Charts ---
+        const renderDepartmentProgramCharts = (data) => {
             chartsPlaceholder.classList.add('hidden');
-            departmentBarChartsContainer.innerHTML = ''; // Clear previous charts
+            departmentProgramBarChartsContainer.innerHTML = ''; // Clear previous charts
 
+            // Group data by department
             const groupedByDepartment = data.reduce((acc, row) => {
                 if (!acc[row.department]) {
-                    acc[row.department] = { totalPresent: 0, totalAbsent: 0 };
+                    acc[row.department] = { programs: [] };
                 }
                 const totalPresent = row.year1.present + row.year2.present + row.year3.present + row.year4.present;
                 const totalAbsent = row.year1.absent + row.year2.absent + row.year3.absent + row.year4.absent;
-                acc[row.department].totalPresent += totalPresent;
-                acc[row.department].totalAbsent += totalAbsent;
+                acc[row.department].programs.push({
+                    name: row.program,
+                    present: totalPresent,
+                    absent: totalAbsent
+                });
                 return acc;
             }, {});
 
             Object.keys(groupedByDepartment).forEach(departmentName => {
                 const deptData = groupedByDepartment[departmentName];
                 
+                // Prepare labels and data for the stacked bar chart
+                const programLabels = [];
+                const presentData = [];
+                const absentData = [];
+
+                deptData.programs.forEach(program => {
+                    programLabels.push(program.name);
+                    presentData.push(program.present);
+                    absentData.push(program.absent);
+                });
+
+                // Create the bar chart div and canvas
                 const deptChartDiv = document.createElement('div');
                 deptChartDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md';
                 const chartContainer = document.createElement('div');
@@ -390,104 +259,98 @@
                 
                 chartContainer.appendChild(canvas);
                 deptChartDiv.appendChild(chartContainer);
-                departmentBarChartsContainer.appendChild(deptChartDiv);
+                departmentProgramBarChartsContainer.appendChild(deptChartDiv);
 
-                updateVerticalBarChart(
-                    canvasId,
-                    deptData.totalPresent,
-                    deptData.totalAbsent,
-                    `${departmentName} Attendance`
-                );
-            });
-        };
-
-        // --- Render Program Distribution Bar Charts (Horizontal) ---
-        const renderProgramDistributionBarCharts = (data) => {
-            programDistributionBarChartsContainer.innerHTML = ''; // Clear previous charts
-
-            const groupedByDepartment = data.reduce((acc, row) => {
-                if (!acc[row.department]) {
-                    acc[row.department] = { programs: [] };
+                // Destroy any existing chart instance on this canvas
+                if (chartInstances[canvasId]) {
+                    chartInstances[canvasId].destroy();
                 }
-                const totalStudents = (row.year1.present + row.year1.absent) +
-                                      (row.year2.present + row.year2.absent) +
-                                      (row.year3.present + row.year3.absent) +
-                                      (row.year4.present + row.year4.absent);
-                acc[row.department].programs.push({
-                    name: row.program,
-                    total: totalStudents
+
+                // Create the new chart instance
+                const chart = new Chart(canvas, {
+                    type: 'bar',
+                    data: {
+                        labels: programLabels,
+                        datasets: [{
+                            label: 'Present',
+                            data: presentData,
+                            backgroundColor: '#2563eb',
+                            borderColor: '#1e40af',
+                            borderWidth: 1
+                        }, {
+                            label: 'Absent',
+                            data: absentData,
+                            backgroundColor: '#dc2626',
+                            borderColor: '#b91c1c',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                stacked: false,
+                                grid: {
+                                    display: false
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Programs',
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                }
+                            },
+                            y: {
+                                stacked: false,
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Number of Students',
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    font: {
+                                        size: 14
+                                    }
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: `${departmentName} Attendance by Program`,
+                                font: {
+                                    size: 18,
+                                    weight: 'bold'
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const value = context.raw;
+                                        const datasetIndex = context.datasetIndex;
+                                        const dataset = context.chart.data.datasets[datasetIndex];
+                                        const otherDataset = context.chart.data.datasets[1 - datasetIndex];
+                                        const total = value + otherDataset.data[context.dataIndex];
+                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
+                                        return ` ${context.dataset.label}: ${value} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
                 });
-                return acc;
-            }, {});
-
-            Object.keys(groupedByDepartment).forEach(departmentName => {
-                const deptData = groupedByDepartment[departmentName];
-                
-                const progDistChartDiv = document.createElement('div');
-                progDistChartDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md';
-                const chartContainer = document.createElement('div');
-                chartContainer.className = 'chart-container';
-                const canvas = document.createElement('canvas');
-                const canvasId = `prog-dist-chart-${departmentName.replace(/[^a-zA-Z0-9]/g, '')}`;
-                canvas.id = canvasId;
-                
-                chartContainer.appendChild(canvas);
-                progDistChartDiv.appendChild(chartContainer);
-                programDistributionBarChartsContainer.appendChild(progDistChartDiv);
-
-                const programLabels = deptData.programs.map(p => p.name);
-                const programData = deptData.programs.map(p => p.total);
-                
-                updateHorizontalBarChart(
-                    canvasId,
-                    programLabels,
-                    programData,
-                    `${departmentName} Program Totals`
-                );
+                chartInstances[canvasId] = chart;
             });
-        };
-        
-        // --- Render Program Details Bar Charts (Toggled) ---
-        const renderProgramBarCharts = (data) => {
-            programBarChartsContainer.innerHTML = ''; // Clear previous charts
-            
-            const deptProgramsDiv = document.createElement('div');
-            deptProgramsDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md w-full';
-
-            const deptTitle = document.createElement('h3');
-            deptTitle.className = 'font-bold text-xl text-blue-800 mb-4 text-center';
-            deptTitle.textContent = `All Program Attendance Details`;
-            deptProgramsDiv.appendChild(deptTitle);
-
-            const programChartGrid = document.createElement('div');
-            programChartGrid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6';
-            
-            data.forEach(row => {
-                const programChartDiv = document.createElement('div');
-                programChartDiv.className = 'p-4 bg-gray-50 bg-opacity-90 rounded-lg shadow-sm';
-                
-                const chartContainer = document.createElement('div');
-                chartContainer.className = 'chart-container';
-                const canvas = document.createElement('canvas');
-                canvas.id = `prog-bar-chart-${row.program.replace(/[^a-zA-Z0-9]/g, '')}`;
-                
-                chartContainer.appendChild(canvas);
-                programChartDiv.appendChild(chartContainer);
-                programChartGrid.appendChild(programChartDiv);
-
-                const totalPresent = row.year1.present + row.year2.present + row.year3.present + row.year4.present;
-                const totalAbsent = row.year1.absent + row.year2.absent + row.year3.absent + row.year4.absent;
-
-                updateVerticalBarChart(
-                    canvas.id,
-                    totalPresent,
-                    totalAbsent,
-                    row.program
-                );
-            });
-
-            deptProgramsDiv.appendChild(programChartGrid);
-            programBarChartsContainer.appendChild(deptProgramsDiv);
         };
         
         // --- Render Overall Bar Chart with Percentages ---
@@ -549,22 +412,9 @@
             });
         };
         
-        // --- Event Listener for the button ---
-        const setupEventListeners = () => {
-            toggleProgramsBtn.addEventListener('click', () => {
-                const isHidden = programBarChartsContainer.classList.toggle('hidden');
-                if (isHidden) {
-                    toggleProgramsBtn.textContent = 'Show Program Details';
-                } else {
-                    toggleProgramsBtn.textContent = 'Hide Program Details';
-                }
-            });
-        };
-
         // --- Initial App Setup ---
         document.addEventListener('DOMContentLoaded', () => {
             setupFirebase();
-            setupEventListeners();
         });
     </script>
 </body>

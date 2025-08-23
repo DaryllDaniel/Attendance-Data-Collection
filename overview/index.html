@@ -6,19 +6,17 @@
     <title>Student Data Uploader</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase SDKs for Cloud Persistence -->
+    <!-- Firebase SDKs from CDN -->
     <script type="module">
-        // This is a direct import from Firebase's CDN. It's safe to use.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
-        // Expose Firebase services to the global scope to be used in the script tag below
+
+        // Expose Firebase services to the global scope
         window.firebase = {
             initializeApp,
             getAuth,
             signInAnonymously,
-            signInWithCustomToken,
             onAuthStateChanged,
             getFirestore,
             doc,
@@ -29,13 +27,13 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
-            background-image: url('https://scontent.fcrk1-1.fna.fbcdn.net/v/t39.30808-6/534829113_1219906786818614_3623306942044619088_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=IVr9Yr1-pvUQ7kNvwFa9iO5&_nc_oc=AdntxIkfqY4bkAXBlJJlzddtb7L6hdtB7b9Szq2OuBkDf7fySj9CjncTopvIdlkE_aA&_nc_zt=23&_nc_ht=scontent.fcrk1-1.fna&_nc_gid=wsNnun-HKCpyMJFkIDXHpA&oh=00_AfUlrYAo7YO63AptckNhX1w5AiCyZbvdvxxE5l_uo6vsQw&oe=68AF8B73');
+            background-image: url('https://scontent.fcrk1-1.fna.fbcdn.net/v/t39.30808-6/534829113_1219906786818614_3623306942044619088_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=IVr9Yr1-pvUQkNvwFa9iO5&_nc_oc=AdntxIkfqY4bkAXBlJJlzddtb7L6hdtB7b9Szq2OuBkDf7fySj9CjncTopvIdlkE_aA&_nc_zt=23&_nc_ht=scontent.fcrk1-1.fna&_nc_gid=wsNnun-HKCpyMJFkIDXHpA&oh=00_AfUlrYAo7YO63AptckNh1w5AiCyZbvdvxxE5l_uo6vsQw&oe=68AF8B73');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
             position: relative;
         }
-
+        
         body::before {
             content: '';
             position: absolute;
@@ -46,8 +44,8 @@
             background-color: rgba(0, 0, 255, 0.3);
             z-index: 1;
         }
-        
-        /* Modal styles */
+
+        /* Styles for the modal */
         .modal {
             display: none;
             position: fixed;
@@ -56,7 +54,7 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0,0,0,0.4);
+            background-color: rgba(0, 0, 0, 0.5);
             justify-content: center;
             align-items: center;
         }
@@ -64,54 +62,20 @@
         .modal-content {
             background-color: #fff;
             padding: 24px;
-            border-radius: 10px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             text-align: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            position: relative;
             max-width: 400px;
             width: 90%;
-            transform: translateY(-20px);
-            animation: slideIn 0.3s forwards;
         }
 
-        @keyframes slideIn {
-            from { transform: translateY(-20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 20px;
         }
 
-        .close-button {
-            position: absolute;
-            top: 8px;
-            right: 12px;
-            font-size: 24px;
-            font-weight: bold;
-            color: #aaa;
-            cursor: pointer;
-            border: none;
-            background: none;
-        }
-
-        .close-button:hover {
-            color: #000;
-        }
-
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border-left-color: #2563eb;
-            animation: spin 1s ease infinite;
-            display: inline-block;
-            margin-bottom: 12px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Responsive image */
         #top-left-logo {
             position: absolute;
             top: 1rem;
@@ -122,216 +86,209 @@
             border-radius: 0.5rem;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
+
+        @media (max-width: 640px) {
+            #top-left-logo {
+                width: 80px;
+            }
+        }
     </style>
 </head>
-<body class="flex flex-col items-center min-h-screen p-4 z-10 relative">
-
+<body class="flex flex-col items-center min-h-screen p-4">
     <!-- Top-left logo -->
-    <img id="top-left-logo" src="https://scontent.fcrk1-2.fna.fbcdn.net/v/t39.30808-6/481256091_1075839891225305_8701060058928039111_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=OCjjkE8jx7IQ7kNvwEp79Cp&_nc_oc=AdnDPmGq-xwFdLhQcze1O-nZmR0e5Nr8AX3fDmfdOLUPXALB4MNg7J65H2Q8TE5sY-4&_nc_zt=23&_nc_ht=scontent.fcrk1-2.fna&_nc_gid=nFjzVEKrI6WrhINW3zz39w&oh=00_AfVGG0LH9XXR_Q2o-1bm8ODj0HrJU7A7o6eu4L5YYjY7Cw&oe=68AFB084" alt="Logo">
-    
-    <!-- Main content container -->
-    <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-lg mt-16 z-20">
-        <h1 class="text-3xl font-extrabold text-center text-gray-800 mb-2">Student Data Uploader</h1>
-        <p class="text-center text-gray-600 mb-8">Upload a CSV file and save it to the cloud.</p>
+    <img id="top-left-logo" src="https://scontent.fcrk1-2.fna.fbcdn.net/v/t39.30808-6/481256091_1075839891225305_8701060058928039111_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=OCjjkE8jx7IQ7kNvwEp79Cp&_nc_oc=AdnDPmGq-xwFdLhQcze1O-nZmR0e5Nr8AX3fDmfdOLUP-d_29Lg7J65H2Q8TE5sY-4&_nc_zt=23&_nc_ht=scontent.fcrk1-2.fna&_nc_gid=nFjzVEKrI6WrhINW3zz39w&oh=00_AfVGG0LH9XXR_Q2o-1bm8ODj0HrJU7A7o6eu4L5YYjY7Cw&oe=68AFB084" alt="Logo">
 
-        <!-- Form for CSV upload -->
-        <form id="uploadForm" class="flex flex-col items-center space-y-4">
-            <div class="w-full">
-                <label for="event-name" class="block text-sm font-medium text-gray-700">Event Name</label>
-                <input type="text" id="event-name" name="event-name" required placeholder="e.g., General Assembly 2024"
-                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-            </div>
-
-            <div class="w-full">
-                <label for="csv-file" class="block text-sm font-medium text-gray-700">Select CSV File</label>
-                <input type="file" id="csv-file" name="csv-file" accept=".csv" required
-                       class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
-            </div>
-
-            <button type="submit" id="save-data-btn" class="w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                Save Data to Cloud
-            </button>
-        </form>
-
-        <!-- Status Message Box -->
-        <div id="status-message" class="text-center p-4 rounded-md mt-6 hidden"></div>
+    <div class="text-center mb-8 px-4 z-20">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-2 drop-shadow-lg">Student Data Uploader</h1>
+        <p class="text-gray-200 drop-shadow-md">Save event data to the cloud.</p>
     </div>
 
-    <!-- The custom modal for messages -->
-    <div id="message-modal" class="modal">
+    <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col gap-8 z-20 overflow-auto">
+
+        <!-- Upload Section -->
+        <div class="flex-1">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Upload CSV Data</h2>
+            <div class="flex flex-col md:flex-row items-center justify-center gap-4 mb-6">
+                <input type="text" id="event-name-input" placeholder="Enter event name (e.g., Spring Meetup 2024)" class="w-full md:w-1/2 p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200">
+                <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+                <label for="csv-file-input" class="w-full md:w-1/4 p-3 rounded-md bg-blue-500 text-white font-semibold text-center cursor-pointer hover:bg-blue-600 transition-all duration-200 shadow-md">Choose CSV File</label>
+                <button id="upload-button" class="w-full md:w-1/4 p-3 rounded-md bg-green-500 text-white font-semibold hover:bg-green-600 transition-all duration-200 shadow-md">Upload Data</button>
+            </div>
+            
+            <!-- Loading and Status Messages -->
+            <div id="status-message" class="text-center p-4 text-gray-500 font-medium bg-gray-100 rounded-lg hidden">
+                Connecting to the cloud...
+            </div>
+            <div id="file-name-display" class="text-center text-sm text-gray-600 mt-2 hidden">
+                No file chosen.
+            </div>
+        </div>
+
+    </div>
+
+    <!-- The custom modal for alerts -->
+    <div id="custom-modal" class="modal">
         <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <div id="modal-spinner" class="spinner hidden"></div>
-            <p id="modal-text" class="text-gray-700 font-medium"></p>
+            <h3 id="modal-title" class="text-xl font-bold mb-2"></h3>
+            <p id="modal-message" class="text-gray-700 mb-4"></p>
+            <div class="modal-buttons">
+                <button id="modal-ok-button" class="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-all duration-200">OK</button>
+            </div>
         </div>
     </div>
 
-    <script>
-        // --- DOM Element References ---
-        const uploadForm = document.getElementById('uploadForm');
-        const eventNameInput = document.getElementById('event-name');
-        const csvFileInput = document.getElementById('csv-file');
-        const statusMessage = document.getElementById('status-message');
-        const messageModal = document.getElementById('message-modal');
-        const modalText = document.getElementById('modal-text');
-        const modalSpinner = document.getElementById('modal-spinner');
-        const modalCloseButton = document.querySelector('#message-modal .close-button');
-        const saveButton = document.getElementById('save-data-btn');
-
+    <script type="module">
         // --- Firebase Service Instances ---
         let db;
         let auth;
-        let userId;
-        const EVENTS_COLLECTION = "events";
+        let userId = 'anonymous'; // Default ID
+        const EVENTS_COLLECTION = "event_attendance_tracker";
 
-        // --- Functions for the custom modal ---
-        const showModal = (message, isLoading = false) => {
-            modalText.textContent = message;
-            if (isLoading) {
-                modalSpinner.classList.remove('hidden');
-                modalCloseButton.style.display = 'none';
+        // --- DOM Element References ---
+        const eventNameInput = document.getElementById('event-name-input');
+        const csvFileInput = document.getElementById('csv-file-input');
+        const uploadButton = document.getElementById('upload-button');
+        const statusMessage = document.getElementById('status-message');
+        const fileNameDisplay = document.getElementById('file-name-display');
+        const modal = document.getElementById('custom-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalOkButton = document.getElementById('modal-ok-button');
+
+        // --- Event Listeners ---
+        csvFileInput.addEventListener('change', () => {
+            if (csvFileInput.files.length > 0) {
+                fileNameDisplay.textContent = `File chosen: ${csvFileInput.files[0].name}`;
+                fileNameDisplay.classList.remove('hidden');
             } else {
-                modalSpinner.classList.add('hidden');
-                modalCloseButton.style.display = 'block';
+                fileNameDisplay.textContent = `No file chosen.`;
+                fileNameDisplay.classList.add('hidden');
             }
-            messageModal.style.display = 'flex';
-        };
+        });
 
-        const hideModal = () => {
-            messageModal.style.display = 'none';
-        };
+        uploadButton.addEventListener('click', () => {
+            const eventName = eventNameInput.value.trim();
+            const file = csvFileInput.files[0];
+
+            if (!eventName) {
+                showModal("Validation Error", "Please enter an event name.");
+                return;
+            }
+            if (!file) {
+                showModal("Validation Error", "Please select a CSV file to upload.");
+                return;
+            }
+
+            // Start the upload process
+            uploadData(eventName, file);
+        });
+
+        modalOkButton.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
 
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
             try {
-                // IMPORTANT: The following variables are provided by the hosting environment.
-                // If hosting on GitHub, replace these with your actual Firebase project config.
-                // For example:
-                // const firebaseConfig = {
-                //   apiKey: "YOUR_API_KEY",
-                //   authDomain: "YOUR_AUTH_DOMAIN",
-                //   projectId: "YOUR_PROJECT_ID",
-                //   storageBucket: "YOUR_STORAGE_BUCKET",
-                //   messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-                //   appId: "YOUR_APP_ID"
-                // };
-                // const initialAuthToken = null; // Or a token you manage
-                // const appId = firebaseConfig.projectId; // Or a specific app ID you manage
-
-                 const firebaseConfig = {
-                    apiKey: "AIzaSyDCRT5OxfwUD25pS6igy8v3xYlaGmMXK_0",
-                    authDomain: "event-calendar-prototype-b11b6.firebaseapp.com",
-                    projectId: "event-calendar-prototype-b11b6",
-                    storageBucket: "event-calendar-prototype-b11b6.firebasestorage.app",
-                    messagingSenderId: "532386656284",
-                    appId: "1:532386656284:web:fd4533fb0f54b198752fd9",
-                    measurementId: "G-J10NDCD212"
-                  };
-                 const app = initializeApp(firebaseConfig);
-                  const analytics = getAnalytics(app);
+                // IMPORTANT: Replace this with your own Firebase project's configuration!
+              // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyDCRT5OxfwUD25pS6igy8v3xYlaGmMXK_0",
+  authDomain: "event-calendar-prototype-b11b6.firebaseapp.com",
+  projectId: "event-calendar-prototype-b11b6",
+  storageBucket: "event-calendar-prototype-b11b6.firebasestorage.app",
+  messagingSenderId: "532386656284",
+  appId: "1:532386656284:web:fd4533fb0f54b198752fd9",
+  measurementId: "G-J10NDCD212"
+};
 
                 const app = window.firebase.initializeApp(firebaseConfig);
                 auth = window.firebase.getAuth(app);
                 db = window.firebase.getFirestore(app);
 
-                // Authenticate the user using the provided token or anonymously
-                if (initialAuthToken) {
-                    await window.firebase.signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await window.firebase.signInAnonymously(auth);
-                }
-                
-                // Set the user ID for Firestore operations
-                userId = auth.currentUser.uid;
-                
-                showStatusMessage("Connected to the cloud. You can now upload a CSV file.", 'success');
+                // Sign in anonymously for simplicity on GitHub
+                await window.firebase.signInAnonymously(auth);
 
+                // Listen for authentication state changes to update the UI
+                window.firebase.onAuthStateChanged(auth, (user) => {
+                    if (user) {
+                        userId = user.uid; // Use the authenticated user's ID
+                        statusMessage.textContent = "Connected to the cloud.";
+                        statusMessage.classList.remove('hidden');
+                        statusMessage.classList.add('bg-gray-100', 'text-gray-500');
+                        uploadButton.disabled = false;
+                        uploadButton.textContent = "Upload Data";
+                    } else {
+                        statusMessage.textContent = "Authentication failed. Please check your Firebase config.";
+                        statusMessage.classList.remove('bg-gray-100', 'text-gray-500');
+                        statusMessage.classList.add('bg-red-100', 'text-red-600');
+                        uploadButton.disabled = true;
+                    }
+                });
             } catch (error) {
                 console.error("Firebase setup failed:", error);
-                showStatusMessage("Error setting up cloud connection. Please try again later.", 'error');
+                showModal("Setup Error", `Error setting up cloud connection: ${error.message}`);
+                statusMessage.textContent = "Error setting up cloud connection. Please try again later.";
+                statusMessage.classList.remove('hidden');
+                statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
+                statusMessage.classList.add('text-red-600', 'bg-red-100');
             }
         };
 
-        // --- Utility function to show status messages
-        const showStatusMessage = (message, type) => {
-            statusMessage.textContent = message;
-            statusMessage.classList.remove('hidden', 'bg-green-100', 'text-green-600', 'bg-red-100', 'text-red-600', 'bg-yellow-100', 'text-yellow-600');
-            if (type === 'success') {
-                statusMessage.classList.add('bg-green-100', 'text-green-600');
-            } else if (type === 'error') {
-                statusMessage.classList.add('bg-red-100', 'text-red-600');
-            } else if (type === 'warning') {
-                statusMessage.classList.add('bg-yellow-100', 'text-yellow-600');
-            }
-        };
-
-        // --- Main form submission logic ---
-        uploadForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-
-            if (!db || !userId) {
-                showStatusMessage("Cloud connection not ready. Please wait.", 'warning');
+        // --- Main Data Upload Function ---
+        const uploadData = (eventName, file) => {
+            if (!userId || userId === 'anonymous') {
+                showModal("Authentication Error", "Please wait for the app to connect to the cloud.");
                 return;
             }
 
-            const eventName = eventNameInput.value.trim();
-            const file = csvFileInput.files[0];
-
-            if (!eventName || !file) {
-                showModal("Please provide an event name and select a CSV file.", false);
-                return;
-            }
-
-            // Show loading modal
-            showModal("Saving data to the cloud...", true);
+            statusMessage.textContent = "Reading file...";
+            statusMessage.classList.remove('hidden', 'bg-red-100');
+            statusMessage.classList.add('bg-gray-100', 'text-gray-500');
 
             const reader = new FileReader();
-            reader.onload = async (event) => {
-                const csvData = event.target.result;
-                const rows = csvData.split('\n').map(row => row.split(','));
+            reader.onload = async (e) => {
+                const text = e.target.result;
+                const rows = text.split('\n').map(row => row.split(','));
 
-                // Basic validation: check if the CSV has content
-                if (rows.length <= 1) {
-                    showModal("The selected CSV file appears to be empty or invalid.", false);
-                    return;
-                }
-
+                const dataToSave = JSON.stringify(rows);
+                
                 try {
-                    // Create a document reference with the event name as the document ID
-                    const docRef = window.firebase.doc(db, `artifacts/${auth.app.options.projectId}/users/${userId}/${EVENTS_COLLECTION}`, eventName);
+                    statusMessage.textContent = "Uploading to cloud...";
+                    uploadButton.disabled = true;
                     
-                    // The data must be converted to a JSON string for Firestore to save it properly
+                    // Firestore data path using the user's ID
+                    const docRef = window.firebase.doc(db, `artifacts/${userId}/${EVENTS_COLLECTION}`, eventName);
+                    
                     await window.firebase.setDoc(docRef, {
-                        timestamp: window.firebase.serverTimestamp,
-                        data: JSON.stringify(rows)
+                        createdAt: new Date(),
+                        data: dataToSave
                     });
-                    
-                    showModal("Data saved to the cloud successfully!", false);
-                    showStatusMessage(`Data for event "${eventName}" was saved successfully!`, 'success');
-                    uploadForm.reset();
-                } catch (error) {
-                    console.error("Error saving document: ", error);
-                    showModal(`Error saving data. Please check the console for details.`, false);
-                    showStatusMessage(`Error saving data for event "${eventName}".`, 'error');
+
+                    statusMessage.textContent = "Upload successful!";
+                    statusMessage.classList.remove('bg-gray-100', 'text-gray-500');
+                    statusMessage.classList.add('bg-green-100', 'text-green-600');
+                } catch (e) {
+                    console.error("Error uploading document: ", e);
+                    showModal("Upload Failed", `An error occurred: ${e.message}`);
+                    statusMessage.textContent = "Upload failed!";
+                    statusMessage.classList.remove('bg-gray-100', 'text-gray-500');
+                    statusMessage.classList.add('bg-red-100', 'text-red-600');
+                } finally {
+                    uploadButton.disabled = false;
                 }
-            };
-            reader.onerror = () => {
-                showModal("Error reading the file. Please try again.", false);
             };
             reader.readAsText(file);
-        });
+        };
 
-        // --- Close modal functionality ---
-        modalCloseButton.addEventListener('click', hideModal);
+        // --- Custom Modal Function ---
+        const showModal = (title, message) => {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modal.style.display = 'flex';
+        };
 
-        // Close modal on click outside
-        window.addEventListener('click', (event) => {
-            if (event.target === messageModal) {
-                hideModal();
-            }
-        });
-
-        // --- Initial App Setup ---
+        // Initialize Firebase on page load
         document.addEventListener('DOMContentLoaded', () => {
             setupFirebase();
         });

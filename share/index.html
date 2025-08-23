@@ -3,16 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Data Viewer</title>
+    <title>Student Data Import</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Papaparse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <!-- Firebase SDKs for Cloud Persistence -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // getDoc is a new import to read data from a document
+        import { getFirestore, setDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Expose Firebase services to the global scope
         window.firebase = {
@@ -22,14 +25,24 @@
             signInWithCustomToken,
             onAuthStateChanged,
             getFirestore,
+            setDoc,
             doc,
-            onSnapshot
+            getDoc // Make getDoc available globally
         };
     </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
+        }
+        .drop-area {
+            border: 2px dashed #9ca3af;
+            border-radius: 0.75rem;
+            transition: all 0.2s ease-in-out;
+        }
+        .drop-area.highlight {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
         }
     </style>
 </head>
@@ -38,14 +51,21 @@
     <!-- Main Application Container -->
     <div class="bg-white p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col lg:flex-row gap-8">
 
-        <!-- Data Display and Controls Section -->
+        <!-- Data Import and Controls Section -->
         <div class="flex-1">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800 mb-2">Student Data Viewer</h1>
-            <p class="text-gray-600 mb-6">This app retrieves student attendance data from the cloud to display charts.</p>
+            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800 mb-2">Student Data Import</h1>
+            <p class="text-gray-600 mb-6">Upload a CSV file to visualize student attendance by program or department. Select a program or department below to view its charts.</p>
             
-            <!-- Loading and Status Messages -->
-            <div id="status-message" class="text-center p-4 text-gray-500 font-medium bg-gray-100 rounded-lg mb-6">
-                Connecting to the cloud...
+            <!-- File Drop Area -->
+            <div id="drop-area" class="drop-area p-8 text-center cursor-pointer mb-6">
+                <p class="text-gray-500 mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                </p>
+                <p class="text-lg font-medium text-gray-600">Drag and drop a CSV file here</p>
+                <span class="text-gray-400 text-sm">or click to browse</span>
+                <input type="file" id="file-input" class="hidden" accept=".csv" />
             </div>
 
             <!-- Program Selector -->
@@ -63,19 +83,22 @@
                     <option value="">All Departments</option>
                 </select>
             </div>
+
+            <!-- Status and Error Messages -->
+            <div id="status-message" class="text-red-500 text-sm font-medium"></div>
         </div>
 
         <!-- Chart Section -->
         <div class="flex-1 bg-gray-50 p-6 rounded-xl shadow-inner">
-            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Program</h2>
+            <h2 id="program-title" class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Program</h2>
             <div id="program-chart-container" class="w-full h-80 flex items-center justify-center mb-6">
-                <p id="program-chart-placeholder" class="text-gray-500 text-center">Charts will appear here after data is loaded.</p>
+                <p id="program-chart-placeholder" class="text-gray-500 text-center">Please upload a CSV file to view the attendance charts.</p>
                 <canvas id="program-chart" class="hidden"></canvas>
             </div>
 
-            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Department</h2>
+            <h2 id="department-title" class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Department</h2>
             <div id="department-chart-container" class="w-full h-80 flex items-center justify-center">
-                <p id="department-chart-placeholder" class="text-gray-500 text-center">Charts will appear here after data is loaded.</p>
+                <p id="department-chart-placeholder" class="text-gray-500 text-center">Please upload a CSV file to view the attendance charts.</p>
                 <canvas id="department-chart" class="hidden"></canvas>
             </div>
         </div>
@@ -83,6 +106,19 @@
     </div>
 
     <script type="module">
+        // --- IMPORTANT: Manually paste your Firebase config here ---
+        // You can get this from your Firebase project settings.
+        const YOUR_FIREBASE_CONFIG = {
+              apiKey: "AIzaSyDCRT5OxfwUD25pS6igy8v3xYlaGmMXK_0",
+              authDomain: "event-calendar-prototype-b11b6.firebaseapp.com",
+              projectId: "event-calendar-prototype-b11b6",
+              storageBucket: "event-calendar-prototype-b11b6.firebasestorage.app",
+              messagingSenderId: "532386656284",
+              appId: "1:532386656284:web:fd4533fb0f54b198752fd9",
+              measurementId: "G-J10NDCD212"
+        };
+        const USE_MANUAL_CONFIG = true;
+
         // --- Firebase Service Instances ---
         let db;
         let auth;
@@ -91,6 +127,8 @@
         const DOCUMENT_ID = "mainData";
 
         // --- DOM Element References ---
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('file-input');
         const programSelect = document.getElementById('program-select');
         const departmentSelect = document.getElementById('department-select');
         const statusMessage = document.getElementById('status-message');
@@ -100,6 +138,8 @@
         const departmentChartPlaceholder = document.getElementById('department-chart-placeholder');
         const programChartCanvas = document.getElementById('program-chart');
         const departmentChartCanvas = document.getElementById('department-chart');
+        const programTitle = document.getElementById('program-title');
+        const departmentTitle = document.getElementById('department-title');
         
         let studentData = [];
         let programChart;
@@ -108,30 +148,53 @@
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
             try {
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                // Check if running in the special environment
+                const envAppId = typeof __app_id !== 'undefined' ? __app_id : null;
+                const envFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+                const envAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                
+                let app, initialAuthToken, firebaseConfig, appId;
 
-                const app = window.firebase.initializeApp(firebaseConfig);
+                if (envAppId && envFirebaseConfig && envAuthToken && !USE_MANUAL_CONFIG) {
+                    // Use environment variables if available
+                    appId = envAppId;
+                    firebaseConfig = envFirebaseConfig;
+                    initialAuthToken = envAuthToken;
+                } else if (USE_MANUAL_CONFIG && YOUR_FIREBASE_CONFIG.projectId !== "YOUR_PROJECT_ID") {
+                    // Use the manually provided config
+                    appId = YOUR_FIREBASE_CONFIG.projectId;
+                    firebaseConfig = YOUR_FIREBASE_CONFIG;
+                    // For manual hosting, we'll use anonymous sign-in
+                    initialAuthToken = null;
+                } else {
+                    // No valid configuration found
+                    statusMessage.textContent = "Error: This app requires a Firebase connection. Please provide a valid configuration in the code or use the Canvas environment.";
+                    statusMessage.style.color = '#dc2626';
+                    return;
+                }
+
+                app = window.firebase.initializeApp(firebaseConfig);
                 auth = window.firebase.getAuth(app);
                 db = window.firebase.getFirestore(app);
 
-                // Sign in with the provided custom token
+                // Sign in with the provided custom token or anonymously
                 if (initialAuthToken) {
                     await window.firebase.signInWithCustomToken(auth, initialAuthToken);
                 } else {
                     await window.firebase.signInAnonymously(auth);
                 }
 
-                // Listen for auth state changes to get the user ID
-                window.firebase.onAuthStateChanged(auth, (user) => {
+                window.firebase.onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
-                        statusMessage.textContent = "Connected to cloud. Retrieving data...";
-                        statusMessage.style.color = '#4b5563';
-                        fetchDataFromFirestore();
+                        statusMessage.textContent = `Cloud connection successful! Your User ID is: ${userId}`;
+                        statusMessage.style.color = '#10b981';
+
+                        // Now that we're authenticated, attempt to read data
+                        await readDataFromFirestore();
                     } else {
-                        statusMessage.textContent = "Failed to connect to the cloud.";
+                        console.log("User is signed out.");
+                        statusMessage.textContent = "Please sign in to save data to the cloud.";
                         statusMessage.style.color = '#dc2626';
                     }
                 });
@@ -142,50 +205,155 @@
             }
         };
 
-        // --- Fetch Data from Firestore ---
-        const fetchDataFromFirestore = () => {
+        // --- Read Data from Firestore ---
+        const readDataFromFirestore = async () => {
             if (!db || !userId) {
-                statusMessage.textContent = "Cloud connection not ready. Data cannot be retrieved.";
+                return;
+            }
+
+            statusMessage.textContent = "Attempting to load data from the cloud...";
+            statusMessage.style.color = '#4b5563';
+
+            const docPath = typeof __app_id !== 'undefined' 
+                ? `artifacts/${__app_id}/users/${userId}/${COLLECTION_NAME}`
+                : `artifacts/${YOUR_FIREBASE_CONFIG.projectId}/users/${userId}/${COLLECTION_NAME}`;
+
+            const docRef = window.firebase.doc(db, docPath, DOCUMENT_ID);
+
+            try {
+                const docSnap = await window.firebase.getDoc(docRef);
+
+                if (docSnap.exists() && docSnap.data().studentData) {
+                    // Parse the JSON string back into a JavaScript object
+                    studentData = JSON.parse(docSnap.data().studentData);
+                    
+                    // Populate selectors and render charts with the loaded data
+                    populateSelectors(studentData);
+                    renderProgramChart(studentData, "All Programs");
+                    renderDepartmentChart(studentData, "All Departments");
+
+                    statusMessage.textContent = "Data loaded from the cloud successfully!";
+                    statusMessage.style.color = '#10b981';
+                } else {
+                    console.log("No data found in the cloud for this user.");
+                    statusMessage.textContent = "No saved data found. Please upload a CSV file.";
+                    statusMessage.style.color = '#4b5563';
+                }
+            } catch (e) {
+                console.error("Error reading document: ", e);
+                statusMessage.textContent = "Error loading data from the cloud. Please try again.";
+                statusMessage.style.color = '#dc2626';
+            }
+        };
+
+        // --- Drag & Drop Event Listeners ---
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.classList.add('highlight');
+        });
+
+        dropArea.addEventListener('dragleave', () => {
+            dropArea.classList.remove('highlight');
+        });
+
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropArea.classList.remove('highlight');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        dropArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFile(e.target.files[0]);
+        });
+
+        // --- File Handling and Parsing ---
+        const handleFile = (file) => {
+            if (file.type !== 'text/csv') {
+                statusMessage.textContent = "Invalid file type. Please upload a CSV file.";
                 statusMessage.style.color = '#dc2626';
                 return;
             }
 
-            const docRef = window.firebase.doc(db, `artifacts/${__app_id}/users/${userId}/${COLLECTION_NAME}`, DOCUMENT_ID);
+            statusMessage.textContent = "Processing file...";
+            statusMessage.style.color = '#4b5563';
 
-            // Use onSnapshot for real-time data listening
-            window.firebase.onSnapshot(docRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    try {
-                        studentData = JSON.parse(data.studentData);
-                        if (studentData.length > 0) {
-                            statusMessage.textContent = "Data retrieved successfully!";
-                            statusMessage.style.color = '#10b981';
-                            populateSelectors(studentData);
-                            renderProgramChart(studentData);
-                            renderDepartmentChart(studentData);
-                        } else {
-                            statusMessage.textContent = "No student data found in the cloud.";
-                            statusMessage.style.color = '#dc2626';
-                        }
-                    } catch (e) {
-                        console.error("Error parsing data from Firestore:", e);
-                        statusMessage.textContent = "Error parsing data from the cloud.";
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: true,
+                complete: (results) => {
+                    studentData = formatData(results.data);
+                    
+                    if (studentData.length > 0) {
+                        populateSelectors(studentData);
+                        renderProgramChart(studentData, "All Programs");
+                        renderDepartmentChart(studentData, "All Departments");
+                        saveDataToFirestore(studentData);
+                    } else {
+                        statusMessage.textContent = "CSV file is empty or formatted incorrectly.";
                         statusMessage.style.color = '#dc2626';
                     }
-                } else {
-                    statusMessage.textContent = "No data found for this user in the cloud.";
+                },
+                error: (error) => {
+                    statusMessage.textContent = "Error parsing CSV file.";
                     statusMessage.style.color = '#dc2626';
-                    console.log("No such document!");
+                    console.error("CSV parsing error:", error);
                 }
-            }, (error) => {
-                console.error("Error fetching document:", error);
-                statusMessage.textContent = "Error fetching data from the cloud. Please try again.";
-                statusMessage.style.color = '#dc2626';
             });
         };
 
-        // --- Data Formatting is not needed as we are parsing the JSON directly.
+        // --- Data Formatting ---
+        const formatData = (data) => {
+            return data.map(row => ({
+                department: row.Department,
+                program: row.Program,
+                year1: { present: parseInt(row['1st Year Present'], 10), absent: parseInt(row['1st Year Absent'], 10) },
+                year2: { present: parseInt(row['2nd Year Present'], 10), absent: parseInt(row['2nd Year Absent'], 10) },
+                year3: { present: parseInt(row['3rd Year Present'], 10), absent: parseInt(row['3rd Year Absent'], 10) },
+                year4: { present: parseInt(row['4th Year Present'], 10), absent: parseInt(row['4th Year Absent'], 10) },
+            }));
+        };
+
+        // --- Save Data to Firestore ---
+        const saveDataToFirestore = async (data) => {
+            if (!db || !userId) {
+                statusMessage.textContent = "Cloud connection not ready. Data will not be saved.";
+                statusMessage.style.color = '#dc2626';
+                return;
+            }
+
+            statusMessage.textContent = "Saving data to the cloud...";
+            statusMessage.style.color = '#4b5563';
+
+            const dataToSave = {
+                studentData: JSON.stringify(data)
+            };
+
+            const docPath = typeof __app_id !== 'undefined' 
+                ? `artifacts/${__app_id}/users/${userId}/${COLLECTION_NAME}`
+                : `artifacts/${YOUR_FIREBASE_CONFIG.projectId}/users/${userId}/${COLLECTION_NAME}`;
+
+            const docRef = window.firebase.doc(db, docPath, DOCUMENT_ID);
+
+            try {
+                await window.firebase.setDoc(docRef, dataToSave);
+                statusMessage.textContent = "File processed and data saved to the cloud successfully!";
+                statusMessage.style.color = '#10b981';
+                console.log("Document successfully written with ID:", DOCUMENT_ID);
+            } catch (e) {
+                console.error("Error adding document: ", e);
+                statusMessage.textContent = "Error saving data to the cloud. Please try again.";
+                statusMessage.style.color = '#dc2626';
+            }
+        };
+
         // --- Populate Selectors ---
         const populateSelectors = (data) => {
             const uniquePrograms = new Set(data.map(item => item.program));
@@ -210,9 +378,12 @@
         };
 
         // --- Program Chart Rendering and Updating ---
-        const renderProgramChart = (data) => {
+        const renderProgramChart = (data, selectedProgram) => {
             programChartPlaceholder.classList.add('hidden');
             programChartCanvas.classList.remove('hidden');
+            
+            const titleText = selectedProgram && selectedProgram !== '' ? `Attendance by Program: ${selectedProgram}` : 'Attendance by Program';
+            programTitle.textContent = titleText;
 
             const labels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
             const presentData = labels.map((_, i) => data.reduce((sum, current) => sum + current[`year${i + 1}`].present, 0));
@@ -252,7 +423,9 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    const total = context.dataset.data.reduce((sum, current) => sum + current, 0);
+                                    const presentCount = context.chart.data.datasets[0].data[context.dataIndex];
+                                    const absentCount = context.chart.data.datasets[1].data[context.dataIndex];
+                                    const total = presentCount + absentCount;
                                     const value = context.raw;
                                     const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : '0.00';
                                     return `${context.dataset.label}: ${value} (${percentage}%)`;
@@ -270,9 +443,13 @@
         };
 
         // --- Department Chart Rendering and Updating (Bar Chart) ---
-        const renderDepartmentChart = (data) => {
+        const renderDepartmentChart = (data, selectedDepartment) => {
             departmentChartPlaceholder.classList.add('hidden');
             departmentChartCanvas.classList.remove('hidden');
+            
+            const titleText = selectedDepartment && selectedDepartment !== '' ? `Attendance by Department: ${selectedDepartment}` : 'Attendance by Department';
+            departmentTitle.textContent = titleText;
+
 
             const departmentData = data.reduce((acc, row) => {
                 if (!acc[row.department]) {
@@ -321,7 +498,9 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    const total = context.dataset.data.reduce((sum, current) => sum + current, 0);
+                                    const presentCount = context.chart.data.datasets[0].data[context.dataIndex];
+                                    const absentCount = context.chart.data.datasets[1].data[context.dataIndex];
+                                    const total = presentCount + absentCount;
                                     const value = context.raw;
                                     const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : '0.00';
                                     return `${context.dataset.label}: ${value} (${percentage}%)`;
@@ -346,7 +525,9 @@
             if (selectedProgram !== '') {
                 filteredData = studentData.filter(item => item.program === selectedProgram);
             }
-            renderProgramChart(filteredData);
+            renderProgramChart(filteredData, selectedProgram);
+            departmentSelect.value = '';
+            renderDepartmentChart(studentData, '');
         });
 
         departmentSelect.addEventListener('change', (e) => {
@@ -356,7 +537,9 @@
             if (selectedDepartment !== '') {
                 filteredData = studentData.filter(item => item.department === selectedDepartment);
             }
-            renderDepartmentChart(filteredData);
+            renderDepartmentChart(filteredData, selectedDepartment);
+            programSelect.value = '';
+            renderProgramChart(studentData, '');
         });
 
         // --- Initial App Setup ---
@@ -366,4 +549,3 @@
     </script>
 </body>
 </html>
-

@@ -88,13 +88,13 @@
 
         <!-- Chart Section -->
         <div class="flex-1 bg-gray-50 p-6 rounded-xl shadow-inner">
-            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Program</h2>
+            <h2 id="program-title" class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Program</h2>
             <div id="program-chart-container" class="w-full h-80 flex items-center justify-center mb-6">
                 <p id="program-chart-placeholder" class="text-gray-500 text-center">Please upload a CSV file to view the attendance charts.</p>
                 <canvas id="program-chart" class="hidden"></canvas>
             </div>
 
-            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Department</h2>
+            <h2 id="department-title" class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Department</h2>
             <div id="department-chart-container" class="w-full h-80 flex items-center justify-center">
                 <p id="department-chart-placeholder" class="text-gray-500 text-center">Please upload a CSV file to view the attendance charts.</p>
                 <canvas id="department-chart" class="hidden"></canvas>
@@ -136,6 +136,9 @@
         const departmentChartPlaceholder = document.getElementById('department-chart-placeholder');
         const programChartCanvas = document.getElementById('program-chart');
         const departmentChartCanvas = document.getElementById('department-chart');
+        // New DOM element references for the chart titles
+        const programTitle = document.getElementById('program-title');
+        const departmentTitle = document.getElementById('department-title');
         
         let studentData = [];
         let programChart;
@@ -245,8 +248,8 @@
                     
                     if (studentData.length > 0) {
                         populateSelectors(studentData);
-                        renderProgramChart(studentData);
-                        renderDepartmentChart(studentData);
+                        renderProgramChart(studentData, "All Programs");
+                        renderDepartmentChart(studentData, "All Departments");
                         saveDataToFirestore(studentData);
                     } else {
                         statusMessage.textContent = "CSV file is empty or formatted incorrectly.";
@@ -331,9 +334,13 @@
         };
 
         // --- Program Chart Rendering and Updating ---
-        const renderProgramChart = (data) => {
+        const renderProgramChart = (data, selectedProgram) => {
             programChartPlaceholder.classList.add('hidden');
             programChartCanvas.classList.remove('hidden');
+            
+            // Dynamically update the chart title
+            const titleText = selectedProgram && selectedProgram !== '' ? `Attendance by Program: ${selectedProgram}` : 'Attendance by Program';
+            programTitle.textContent = titleText;
 
             const labels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
             const presentData = labels.map((_, i) => data.reduce((sum, current) => sum + current[`year${i + 1}`].present, 0));
@@ -373,7 +380,10 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    const total = context.dataset.data.reduce((sum, current) => sum + current, 0);
+                                    // Get the data for the current index from both datasets
+                                    const presentCount = context.chart.data.datasets[0].data[context.dataIndex];
+                                    const absentCount = context.chart.data.datasets[1].data[context.dataIndex];
+                                    const total = presentCount + absentCount;
                                     const value = context.raw;
                                     const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : '0.00';
                                     return `${context.dataset.label}: ${value} (${percentage}%)`;
@@ -391,9 +401,14 @@
         };
 
         // --- Department Chart Rendering and Updating (Bar Chart) ---
-        const renderDepartmentChart = (data) => {
+        const renderDepartmentChart = (data, selectedDepartment) => {
             departmentChartPlaceholder.classList.add('hidden');
             departmentChartCanvas.classList.remove('hidden');
+            
+            // Dynamically update the chart title
+            const titleText = selectedDepartment && selectedDepartment !== '' ? `Attendance by Department: ${selectedDepartment}` : 'Attendance by Department';
+            departmentTitle.textContent = titleText;
+
 
             const departmentData = data.reduce((acc, row) => {
                 if (!acc[row.department]) {
@@ -442,7 +457,10 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    const total = context.dataset.data.reduce((sum, current) => sum + current, 0);
+                                    // Get the data for the current index from both datasets
+                                    const presentCount = context.chart.data.datasets[0].data[context.dataIndex];
+                                    const absentCount = context.chart.data.datasets[1].data[context.dataIndex];
+                                    const total = presentCount + absentCount;
                                     const value = context.raw;
                                     const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : '0.00';
                                     return `${context.dataset.label}: ${value} (${percentage}%)`;
@@ -467,7 +485,10 @@
             if (selectedProgram !== '') {
                 filteredData = studentData.filter(item => item.program === selectedProgram);
             }
-            renderProgramChart(filteredData);
+            renderProgramChart(filteredData, selectedProgram);
+            // Reset the department dropdown and chart to default
+            departmentSelect.value = '';
+            renderDepartmentChart(studentData, '');
         });
 
         departmentSelect.addEventListener('change', (e) => {
@@ -477,7 +498,10 @@
             if (selectedDepartment !== '') {
                 filteredData = studentData.filter(item => item.department === selectedDepartment);
             }
-            renderDepartmentChart(filteredData);
+            renderDepartmentChart(filteredData, selectedDepartment);
+            // Reset the program dropdown and chart to default
+            programSelect.value = '';
+            renderProgramChart(studentData, '');
         });
 
         // --- Initial App Setup ---

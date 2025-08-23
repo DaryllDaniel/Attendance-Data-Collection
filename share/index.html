@@ -6,14 +6,12 @@
     <title>Student Data Viewer</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js for data visualization -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Firebase SDKs for Cloud Persistence -->
+    <!-- Firebase SDKs from CDN -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        
+        import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
         // Expose Firebase services to the global scope
         window.firebase = {
             initializeApp,
@@ -22,16 +20,18 @@
             onAuthStateChanged,
             getFirestore,
             doc,
-            onSnapshot,
+            getDoc,
             collection,
             getDocs
         };
     </script>
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
-            background-image: url('https://scontent.fcrk1-1.fna.fbcdn.net/v/t39.30808-6/534829113_1219906786818614_3623306942044619088_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=IVr9Yr1-pvUQkNvwFa9iO5&_nc_oc=AdntxIkfqY4bkAXBlJJlzddtb7L6hdtB7b9Szq2OuBkDf7fySj9CjncTopvIdlkE_aA&_nc_zt=23&_nc_ht=scontent.fcrk1-1.fna&_nc_gid=wsNnun-HKCpyMJFkIDXHpA&oh=00_AfUlrYAo7YO63AptckNh1w5AiCyZbvdvxxE5l_uo6vsQw&oe=68AF8B73');
+            background-image: url('https://scontent.fcrk1-1.fna.fbcdn.net/v/t39.30808-6/534829113_1219906786818614_3623306942044619088_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=IVr9Yr1-pvUQkNvwFa9iO5&_nc_oc=AdntxIkfqY4bkAXBlJJlzddtb7L6hdtB7b9Szq2OuBkDf7fySj9CgdnctopvIdlkE_aA&_nc_zt=23&_nc_ht=scontent.fcrk1-1.fna&_nc_gid=wsNnun-HKCpyMJFkIDXHpA&oh=00_AfUlrYAo7YO63AptckNh1w5AiCyZbvdvxxE5l_uo6vsQw&oe=68AF8B73');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -49,10 +49,35 @@
             z-index: 1;
         }
 
-        .chart-container {
-            position: relative;
-            height: 300px;
+        /* Styles for the modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
             width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 20px;
         }
 
         #top-left-logo {
@@ -66,128 +91,126 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        /* Styles for the new event selector dropdown */
-        .event-selector-container {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            z-index: 20;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-        }
-        
-        #event-selector {
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            border: 1px solid #d1d5db;
-            background-color: #fff;
-            color: #374151;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            max-height: 180px; /* Adjust based on desired number of visible options (approx 5) */
-            overflow-y: auto;
-        }
-        
-        #event-selector option {
-            padding: 0.5rem;
-        }
-
-        @media (min-width: 640px) {
-            .event-selector-container {
-                flex-direction: row;
-                align-items: center;
-                gap: 0.5rem;
+        @media (max-width: 640px) {
+            #top-left-logo {
+                width: 80px;
             }
         }
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-4">
-
     <!-- Top-left logo -->
-    <img id="top-left-logo" src="https://scontent.fcrk1-2.fna.fbcdn.net/v/t39.30808-6/481256091_1075839891225305_8701060058928039111_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=OCjjkE8jx7IQ7kNvwEp79Cp&_nc_oc=AdnDPmGq-xwFdLhQcze1O-nZmR0e5Nr8AX3fDmfdOLUP-d_29Lg7J65H2Q8TE5sY-4&_nc_zt=23&_nc_ht=scontent.fcrk1-2.fna&_nc_gid=nFjzVEKrI6WrhINW3zz39w&oh=00_AfVGG0LH9XXR_Q2o-1bm8ODj0HrJU7A7o6eu4L5YYjY7Cw&oe=68AFB084" alt="Logo">
+    <img id="top-left-logo" src="https://scontent.fcrk1-4.fna.fbcdn.net/v/t39.30808-6/537430317_122096293532993050_6396531567539471614_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=WSX_ci11nyQQ7kNvwEt-pXT&_nc_oc=Adn4_s5UW7ucupcP6SwXVA6JsI0fFG59JlUg4Fl-oZixJ3AvkBxrOUTP9DBFT9lC0dY&_nc_zt=23&_nc_ht=scontent.fcrk1-4.fna&_nc_gid=KnzKC5VvxRFOiRXB42TeGA&oh=00_AfWzidd9JfjRRoaZAQigWK_JOqp-X-Ccys0BnucXvXIPaQ&oe=68AFA576" alt="Logo">
 
-    <!-- New Event Selector Dropdown -->
-    <div class="event-selector-container">
-        <label for="event-selector" class="text-white font-medium text-sm drop-shadow-md">Load an Event:</label>
-        <select id="event-selector">
-            <option value="">Loading events...</option>
-        </select>
-    </div>
-
-    <!-- Separate div for title and description -->
-    <div class="text-center mb-8 px-4 z-20">
-        <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-2 drop-shadow-lg">Student Data Viewer</h1>
-        <p class="text-gray-200 drop-shadow-md">Data retrieved successfully!</p>
-    </div>
-
-    <!-- Main Application Container -->
-    <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col gap-8 z-20 overflow-auto">
-
-        <!-- Data Display and Controls Section -->
+    <div class="text-center mb-8 px-4 w-full z-20 flex justify-between items-center">
         <div class="flex-1">
-            <!-- Loading and Status Messages -->
-            <div id="status-message" class="text-center p-4 text-gray-500 font-medium bg-gray-100 rounded-lg mb-6 hidden">
-                Connecting to the cloud...
+            <h1 class="text-2xl md:text-4xl font-extrabold text-white mb-2 drop-shadow-lg text-center">Student Data Viewer</h1>
+            <p class="text-gray-200 drop-shadow-md text-center">View event data from the cloud.</p>
+        </div>
+        <div class="flex items-center justify-end">
+            <!-- Dropdown for selecting events, now in the top-right corner -->
+            <select id="event-selector" class="p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200">
+                <option value="" disabled selected>Loading events...</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col gap-8 z-20">
+        <!-- Overall Attendance Summary -->
+        <div id="overall-chart-container" class="flex-1 hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Overall Attendance Summary</h2>
+            <div class="flex justify-center items-center h-80">
+                <canvas id="overallPieChart" class="max-h-full max-w-full"></canvas>
             </div>
         </div>
 
-        <!-- Chart Section -->
-        <div class="flex-1 bg-gray-50 bg-opacity-90 p-6 rounded-xl shadow-inner w-full">
-            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4 text-center">Department and Program Attendance</h2>
-            
-            <!-- Overall Attendance Bar Chart -->
-            <div class="p-4 bg-white bg-opacity-90 rounded-lg shadow-md mb-6 w-full">
-                <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Overall Attendance Summary</h3>
-                <div class="chart-container">
-                    <canvas id="overall-bar-chart"></canvas>
-                </div>
+        <!-- Department and Program Details -->
+        <div id="department-details-container" class="flex-1 hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Department and Program Details</h2>
+            <div class="flex flex-col md:flex-row items-center justify-center gap-4 mb-6">
+                <label for="department-selector" class="text-gray-700 font-medium">Select Department:</label>
+                <select id="department-selector" class="w-full md:w-3/4 p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"></select>
             </div>
 
-            <!-- Department Slider and Charts Container -->
-            <div class="my-8">
-                <h3 class="text-xl md:text-2xl font-bold text-gray-700 mb-4 text-center">Department and Program Details</h3>
-                
-                <!-- Department Slider -->
-                <div class="flex flex-col items-center mb-6">
-                    <label for="department-slider" class="block text-lg font-medium text-gray-700 mb-2">Select a Department:</label>
-                    <div class="w-full max-w-xl flex items-center justify-between gap-4">
-                        <input type="range" id="department-slider" min="0" max="0" step="1" value="0" class="w-full">
-                        <span id="department-name" class="text-base font-medium text-gray-800 min-w-[150px] text-right">Loading...</span>
+            <div class="flex flex-col md:flex-row justify-center gap-8 items-start">
+                <!-- Department Attendance Pie Chart -->
+                <div class="w-full md:w-1/2">
+                    <div class="flex justify-center items-center h-64 md:h-80">
+                        <canvas id="departmentPieChart" class="max-h-full max-w-full"></canvas>
                     </div>
                 </div>
 
-                <div id="department-program-bar-charts-container" class="grid grid-cols-1 gap-6 w-full h-auto">
-                    <!-- The selected department's chart will be rendered here -->
-                    <p id="charts-placeholder" class="text-gray-500 text-center col-span-full">Please select a department to view details.</p>
+                <!-- Program Attendance Bar Graph -->
+                <div class="w-full md:w-1/2">
+                    <div class="flex justify-center items-center h-64 md:h-80">
+                        <canvas id="programBarGraph" class="max-h-full max-w-full"></canvas>
+                    </div>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Loading and Status Messages -->
+        <div id="status-message" class="text-center p-4 text-gray-500 font-medium bg-gray-100 rounded-lg">
+            Connecting to the cloud...
+        </div>
+    </div>
+
+    <!-- The custom modal for alerts -->
+    <div id="custom-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-xl font-bold mb-2"></h3>
+            <p id="modal-message" class="text-gray-700 mb-4"></p>
+            <div class="modal-buttons">
+                <button id="modal-ok-button" class="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-all duration-200">OK</button>
             </div>
         </div>
     </div>
 
     <script type="module">
-        // --- Firebase Service Instances ---
+        // --- Global Variables and Chart Instances ---
         let db;
         let auth;
-        // The collection path is now constructed to match standard security rules
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        // Updated path to reflect standard security rules
-        const EVENTS_COLLECTION_PATH = `artifacts/${appId}/public/data/events`;
+        const EVENTS_COLLECTION_NAME = "event_attendance_tracker";
+        const FIREBASE_PROJECT_ID = "event-calendar-prototype-b11b6";
+        const PUBLIC_DATA_PATH = `artifacts/${FIREBASE_PROJECT_ID}/public/data/${EVENTS_COLLECTION_NAME}`;
+        let overallData = null;
+        let overallPieChart = null;
+        let departmentPieChart = null;
+        let programBarChart = null;
+        const CHART_COLORS = ['#3B82F6', '#EF4444']; // Blue for Present, Red for Absent
 
         // --- DOM Element References ---
-        const statusMessage = document.getElementById('status-message');
-        const departmentProgramBarChartsContainer = document.getElementById('department-program-bar-charts-container');
-        const chartsPlaceholder = document.getElementById('charts-placeholder');
-        const departmentSlider = document.getElementById('department-slider');
-        const departmentNameSpan = document.getElementById('department-name');
         const eventSelector = document.getElementById('event-selector');
+        const departmentSelector = document.getElementById('department-selector');
+        const overallChartContainer = document.getElementById('overall-chart-container');
+        const departmentDetailsContainer = document.getElementById('department-details-container');
+        const statusMessage = document.getElementById('status-message');
+        const modal = document.getElementById('custom-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMessage = document.getElementById('modal-message');
+        const modalOkButton = document.getElementById('modal-ok-button');
 
-        let studentData = [];
-        let departments = []; // Store the list of departments
-        let overallBarChartInstance = null; // Instance for the overall bar chart
-        let currentDepartmentCharts = []; // Array to store chart instances for the slider view
+        // --- Event Listeners ---
+        eventSelector.addEventListener('change', (e) => {
+            const eventName = e.target.value;
+            if (eventName) {
+                fetchData(eventName);
+            }
+        });
+
+        departmentSelector.addEventListener('change', (e) => {
+            const department = e.target.value;
+            if (department && overallData) {
+                drawDepartmentCharts(department, overallData);
+            }
+        });
+
+        modalOkButton.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
 
         // --- Firebase Initialization and Auth Setup ---
-        const setupFirebase = () => {
+        const setupFirebase = async () => {
             try {
                 const firebaseConfig = {
                     apiKey: "AIzaSyDCRT5OxfwUD25pS6igy8v3xYlaGmMXK_0",
@@ -203,439 +226,389 @@
                 auth = window.firebase.getAuth(app);
                 db = window.firebase.getFirestore(app);
 
+                await window.firebase.signInAnonymously(auth);
+
                 window.firebase.onAuthStateChanged(auth, async (user) => {
                     if (user) {
-                        statusMessage.textContent = "Connected to the cloud. Loading events...";
-                        statusMessage.classList.remove('hidden');
-                        statusMessage.classList.add('bg-gray-100', 'text-gray-500');
-                        fetchEventsAndInitialData();
+                        statusMessage.textContent = "Connected to the cloud. Fetching events...";
+                        await fetchEventList();
                     } else {
-                        await window.firebase.signInAnonymously(auth);
+                        statusMessage.textContent = "Authentication failed. Please check your Firebase config.";
+                        statusMessage.classList.add('bg-red-100', 'text-red-600');
+                        eventSelector.disabled = true;
                     }
                 });
             } catch (error) {
                 console.error("Firebase setup failed:", error);
-                statusMessage.textContent = "Error setting up cloud connection. Please try again later.";
-                statusMessage.classList.remove('hidden');
-                statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
-                statusMessage.classList.add('text-red-600', 'bg-red-100');
+                showModal("Setup Error", `Error setting up cloud connection: ${error.message}`);
+                statusMessage.textContent = "Error setting up cloud connection.";
+                statusMessage.classList.add('bg-red-100', 'text-red-600');
             }
         };
 
-        // --- Fetch List of Events from Firestore ---
-        const fetchEventsAndInitialData = async () => {
-            if (!db) {
-                statusMessage.textContent = "Cloud connection not ready. Events cannot be retrieved.";
-                statusMessage.classList.remove('hidden');
-                statusMessage.classList.add('text-red-600', 'bg-red-100');
-                return;
-            }
+        // --- Function to Fetch and Populate the Event List ---
+        const fetchEventList = async () => {
+            statusMessage.textContent = "Fetching available events...";
+            eventSelector.disabled = true;
 
             try {
-                // The collection reference now points to the full path.
-                const eventsRef = window.firebase.collection(db, EVENTS_COLLECTION_PATH);
-                const querySnapshot = await window.firebase.getDocs(eventsRef);
-
-                const eventNames = querySnapshot.docs.map(doc => doc.id);
+                const collectionRef = window.firebase.collection(db, PUBLIC_DATA_PATH);
+                const querySnapshot = await window.firebase.getDocs(collectionRef);
                 
-                eventSelector.innerHTML = '';
-                if (eventNames.length > 0) {
-                    eventNames.forEach(name => {
+                eventSelector.innerHTML = '<option value="" disabled selected>Select an event</option>';
+                
+                if (querySnapshot.docs.length > 0) {
+                    querySnapshot.forEach(doc => {
                         const option = document.createElement('option');
-                        option.value = name;
-                        option.textContent = name;
+                        option.value = doc.id;
+                        option.textContent = doc.id;
                         eventSelector.appendChild(option);
                     });
-                    eventSelector.value = eventNames[0];
-                    loadAndRenderData(eventNames[0]);
+                    statusMessage.textContent = "Events loaded! Select one to view data.";
+                    statusMessage.classList.remove('bg-gray-100', 'text-gray-500');
+                    statusMessage.classList.add('bg-green-100', 'text-green-600');
+                    eventSelector.disabled = false;
                 } else {
-                    const option = document.createElement('option');
-                    option.textContent = "No events found";
-                    option.value = "";
-                    eventSelector.appendChild(option);
-                    statusMessage.textContent = "No events found in the cloud.";
-                    statusMessage.classList.remove('hidden');
-                    statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
-                    statusMessage.classList.add('text-yellow-600', 'bg-yellow-100');
-                    departmentProgramBarChartsContainer.classList.add('hidden');
-                    departmentSlider.parentElement.classList.add('hidden');
+                    statusMessage.textContent = "No events found. Please upload data with the other app first.";
+                    statusMessage.classList.add('bg-yellow-100', 'text-yellow-600');
                 }
-            } catch (error) {
-                console.error("Error fetching events:", error);
-                statusMessage.textContent = "Error loading events. Please check your Firebase permissions. The data might be in the wrong location.";
-                statusMessage.classList.remove('hidden');
-                statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
-                statusMessage.classList.add('text-red-600', 'bg-red-100');
+            } catch (e) {
+                console.error("Error fetching event list: ", e);
+                showModal("Fetch Error", `An error occurred while fetching the event list: ${e.message}`);
+                statusMessage.textContent = "Failed to fetch event list.";
+                statusMessage.classList.add('bg-red-100', 'text-red-600');
             }
         };
 
-        // --- Load and Render Data for a Specific Event ---
-        const loadAndRenderData = async (eventName) => {
-            if (!eventName) {
-                statusMessage.textContent = "Please select an event to view.";
-                statusMessage.classList.remove('hidden');
-                statusMessage.classList.add('text-yellow-600', 'bg-yellow-100');
-                return;
-            }
-
-            statusMessage.textContent = `Loading data for event "${eventName}"...`;
-            statusMessage.classList.remove('hidden');
-            statusMessage.classList.remove('text-yellow-600', 'bg-yellow-100');
-            statusMessage.classList.add('text-gray-500', 'bg-gray-100');
+        // --- Main Data Fetch Function ---
+        const fetchData = async (eventName) => {
+            statusMessage.textContent = `Fetching data for "${eventName}"...`;
+            statusMessage.classList.remove('hidden', 'bg-red-100', 'bg-green-100', 'bg-yellow-100');
+            statusMessage.classList.add('bg-gray-100', 'text-gray-500');
+            eventSelector.disabled = true;
+            overallChartContainer.classList.add('hidden');
+            departmentDetailsContainer.classList.add('hidden');
 
             try {
-                // The document reference now uses the correct full path.
-                const docRef = window.firebase.doc(db, EVENTS_COLLECTION_PATH, eventName);
+                const docRef = window.firebase.doc(db, PUBLIC_DATA_PATH, eventName);
                 const docSnap = await window.firebase.getDoc(docRef);
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
+                    const csvData = JSON.parse(data.data);
                     
-                    // Add a check to see if the 'data' field exists and is a string
-                    if (!data.data || typeof data.data !== 'string') {
-                        statusMessage.textContent = `Document for "${eventName}" is missing the 'data' field or it's not a string.`;
-                        statusMessage.classList.remove('hidden', 'bg-gray-100');
-                        statusMessage.classList.add('text-red-600', 'bg-red-100');
-                        return;
-                    }
-                    
-                    const rawData = JSON.parse(data.data);
-                    
-                    studentData = parseRawData(rawData);
-                    
-                    if (studentData.length > 0) {
-                        statusMessage.textContent = `Data for "${eventName}" retrieved successfully!`;
-                        statusMessage.classList.remove('hidden');
-                        statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
-                        statusMessage.classList.add('text-green-600', 'bg-green-100');
-
-                        departmentProgramBarChartsContainer.classList.remove('hidden');
-                        departmentSlider.parentElement.classList.remove('hidden');
-
-                        renderOverallBarChart(studentData);
-                        initializeDepartmentSlider(studentData);
+                    if (csvData.length > 1) {
+                        overallData = processAttendanceData(csvData);
+                        drawOverallChart(overallData);
+                        populateDepartmentSelector(overallData);
+                        overallChartContainer.classList.remove('hidden');
+                        departmentDetailsContainer.classList.remove('hidden');
                     } else {
-                        statusMessage.textContent = `Event "${eventName}" contains no valid data.`;
-                        statusMessage.classList.remove('hidden');
-                        statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
-                        statusMessage.classList.add('text-yellow-600', 'bg-yellow-100');
-                        
-                        departmentProgramBarChartsContainer.classList.add('hidden');
-                        departmentSlider.parentElement.classList.add('hidden');
+                        showModal("Data Error", "The selected event has no student data.");
+                        overallData = null;
+                        statusMessage.textContent = "No data found for this event.";
+                        statusMessage.classList.add('bg-yellow-100', 'text-yellow-600');
                     }
+                    statusMessage.textContent = "Data fetched successfully!";
+                    statusMessage.classList.remove('bg-gray-100', 'text-gray-500');
+                    statusMessage.classList.add('bg-green-100', 'text-green-600');
                 } else {
-                    statusMessage.textContent = `Error: Document "${eventName}" does not exist.`;
-                    statusMessage.classList.remove('hidden');
-                    statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
-                    statusMessage.classList.add('text-red-600', 'bg-red-100');
-                    
-                    departmentProgramBarChartsContainer.classList.add('hidden');
-                    departmentSlider.parentElement.classList.add('hidden');
+                    showModal("Fetch Failed", `No data found for event: "${eventName}".`);
+                    overallData = null;
+                    statusMessage.textContent = `No data found for event: "${eventName}".`;
+                    statusMessage.classList.add('bg-yellow-100', 'text-yellow-600');
                 }
             } catch (e) {
-                console.error("Error loading data from event:", e);
-                statusMessage.textContent = "Error loading data from the cloud. Please check the data format in Firestore.";
-                statusMessage.classList.remove('hidden');
-                statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
-                statusMessage.classList.add('text-red-600', 'bg-red-100');
+                console.error("Error fetching document: ", e);
+                showModal("Fetch Failed", `An error occurred: ${e.message}`);
+                statusMessage.textContent = "Fetch failed!";
+                statusMessage.classList.add('bg-red-100', 'text-red-600');
+            } finally {
+                eventSelector.disabled = false;
             }
         };
 
-        const parseRawData = (rows) => {
-            const data = [];
-            if (rows.length < 2) return data;
-            
-            const headers = rows[0];
-            const dataRows = rows.slice(1);
-            
-            dataRows.forEach(row => {
-                if (row.length >= 15 && row[0] && row[1]) {
-                    data.push({
-                        department: row[0].trim(),
-                        program: row[1].trim(),
-                        year1: {
-                            total: parseInt(row[2]) || 0,
-                            present: parseInt(row[3]) || 0,
-                            absent: parseInt(row[4]) || 0
-                        },
-                        year2: {
-                            total: parseInt(row[5]) || 0,
-                            present: parseInt(row[6]) || 0,
-                            absent: parseInt(row[7]) || 0
-                        },
-                        year3: {
-                            total: parseInt(row[8]) || 0,
-                            present: parseInt(row[9]) || 0,
-                            absent: parseInt(row[10]) || 0
-                        },
-                        year4: {
-                            total: parseInt(row[11]) || 0,
-                            present: parseInt(row[12]) || 0,
-                            absent: parseInt(row[13]) || 0
-                        }
-                    });
+        // --- Data Processing Function ---
+        const processAttendanceData = (csvData) => {
+            const headers = csvData[0].map(h => h.trim());
+            const departmentIndex = headers.indexOf('Department');
+            const programIndex = headers.indexOf('Program');
+            const attendanceIndex = headers.indexOf('Attendance');
+
+            if (departmentIndex === -1 || programIndex === -1 || attendanceIndex === -1) {
+                showModal("Data Format Error", "CSV file must contain 'Department', 'Program', and 'Attendance' columns.");
+                return null;
+            }
+
+            let overallPresent = 0;
+            let overallAbsent = 0;
+            const departments = {};
+
+            csvData.slice(1).forEach(row => {
+                const department = row[departmentIndex]?.trim();
+                const program = row[programIndex]?.trim();
+                const attendance = row[attendanceIndex]?.trim();
+
+                if (!department || !program || !attendance) return;
+
+                if (attendance.toLowerCase() === 'present') {
+                    overallPresent++;
+                } else if (attendance.toLowerCase() === 'absent') {
+                    overallAbsent++;
+                }
+
+                if (!departments[department]) {
+                    departments[department] = { present: 0, absent: 0, programs: {} };
+                }
+
+                if (attendance.toLowerCase() === 'present') {
+                    departments[department].present++;
+                } else if (attendance.toLowerCase() === 'absent') {
+                    departments[department].absent++;
+                }
+
+                if (!departments[department].programs[program]) {
+                    departments[department].programs[program] = { present: 0, absent: 0 };
+                }
+
+                if (attendance.toLowerCase() === 'present') {
+                    departments[department].programs[program].present++;
+                } else if (attendance.toLowerCase() === 'absent') {
+                    departments[department].programs[program].absent++;
                 }
             });
-            return data;
-        };
 
-        const initializeDepartmentSlider = (data) => {
-            departments = [...new Set(data.map(row => row.department))].sort();
-            
-            departmentSlider.max = departments.length > 0 ? departments.length - 1 : 0;
-            departmentSlider.value = 0;
-            
-            if (departments.length > 0) {
-                const initialDepartment = departments[departmentSlider.value];
-                departmentNameSpan.textContent = initialDepartment;
-                renderDepartmentProgramCharts(data, initialDepartment);
-                chartsPlaceholder.classList.add('hidden');
-            } else {
-                departmentNameSpan.textContent = "No departments found";
-                departmentProgramBarChartsContainer.innerHTML = '';
-                chartsPlaceholder.classList.remove('hidden');
-            }
-
-            departmentSlider.oninput = (event) => {
-                const selectedIndex = parseInt(event.target.value);
-                const selectedDepartment = departments[selectedIndex];
-                departmentNameSpan.textContent = selectedDepartment;
-                renderDepartmentProgramCharts(data, selectedDepartment);
+            return {
+                overall: { present: overallPresent, absent: overallAbsent },
+                departments: departments
             };
         };
 
-        const renderDepartmentProgramCharts = (data, departmentName) => {
-            currentDepartmentCharts.forEach(chart => chart.destroy());
-            currentDepartmentCharts = [];
-            departmentProgramBarChartsContainer.innerHTML = '';
-
-            const deptData = data.filter(row => row.department === departmentName);
-
-            const overallDeptPresent = deptData.reduce((sum, program) => 
-                sum + program.year1.present + program.year2.present + program.year3.present + program.year4.present, 0);
-            const overallDeptAbsent = deptData.reduce((sum, program) =>
-                sum + program.year1.absent + program.year2.absent + program.year3.absent + program.year4.absent, 0);
-
-            const overallDeptChartDiv = document.createElement('div');
-            overallDeptChartDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md mb-6';
-            overallDeptChartDiv.innerHTML = `
-                <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Overall Attendance for ${departmentName}</h3>
-                <div class="chart-container">
-                    <canvas id="overall-dept-chart"></canvas>
-                </div>
-            `;
-            departmentProgramBarChartsContainer.appendChild(overallDeptChartDiv);
-
-            const overallDeptCanvas = document.getElementById('overall-dept-chart');
-            const newChart = new Chart(overallDeptCanvas, {
-                type: 'bar',
-                data: {
-                    labels: ['Present', 'Absent'],
-                    datasets: [{
-                        label: 'Total Students',
-                        data: [overallDeptPresent, overallDeptAbsent],
-                        backgroundColor: ['#2563eb', '#dc2626'],
-                        borderColor: ['#1e40af', '#b91c1c'],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Number of Students'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const value = context.raw;
-                                    const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
-                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
-                                    return ` ${context.label}: ${value} (${percentage}%)`;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            currentDepartmentCharts.push(newChart);
-            
-            deptData.forEach(program => {
-                const programName = program.program;
-                
-                const programChartDiv = document.createElement('div');
-                programChartDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md';
-                programChartDiv.innerHTML = `
-                    <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Attendance for ${programName}</h3>
-                    <div class="chart-container">
-                        <canvas id="chart-${programName.replace(/[^a-zA-Z0-9]/g, '')}"></canvas>
-                    </div>
-                `;
-                departmentProgramBarChartsContainer.appendChild(programChartDiv);
-
-                const canvas = programChartDiv.querySelector('canvas');
-                const newChartYear = new Chart(canvas, {
-                    type: 'bar',
-                    data: {
-                        labels: ['1st Year', '2nd Year', '3rd Year', '4th Year'],
-                        datasets: [{
-                            label: 'Present',
-                            data: [program.year1.present, program.year2.present, program.year3.present, program.year4.present],
-                            backgroundColor: '#2563eb',
-                            borderColor: '#1e40af',
-                            borderWidth: 1
-                        }, {
-                            label: 'Absent',
-                            data: [program.year1.absent, program.year2.absent, program.year3.absent, program.year4.absent],
-                            backgroundColor: '#dc2626',
-                            borderColor: '#b91c1c',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            x: {
-                                stacked: true,
-                                grid: {
-                                    display: false
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Year Level',
-                                    font: {
-                                        size: 14,
-                                        weight: 'bold'
-                                    }
-                                }
-                            },
-                            y: {
-                                stacked: true,
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Number of Students',
-                                    font: {
-                                        size: 14,
-                                        weight: 'bold'
-                                    }
-                                }
-                            }
-                        },
-                        plugins: {
-                            legend: {
-                                position: 'top',
-                                labels: {
-                                    font: {
-                                        size: 14
-                                    }
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: `${programName} Attendance by Year Level`,
-                                font: {
-                                    size: 18,
-                                    weight: 'bold'
-                                }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        const value = context.raw;
-                                        const datasetIndex = context.datasetIndex;
-                                        const dataset = context.chart.data.datasets[datasetIndex];
-                                        const otherDataset = context.chart.data.datasets[1 - datasetIndex];
-                                        const total = value + otherDataset.data[context.dataIndex];
-                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
-                                        return ` ${context.dataset.label}: ${value} (${percentage}%)`;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
-                currentDepartmentCharts.push(newChartYear);
-            });
-        };
-        
-        const renderOverallBarChart = (data) => {
-            const overallPresent = data.reduce((sum, row) => sum + row.year1.present + row.year2.present + row.year3.present + row.year4.present, 0);
-            const overallAbsent = data.reduce((sum, row) => sum + row.year1.absent + row.year2.absent + row.year3.absent + row.year4.absent, 0);
-
-            const canvas = document.getElementById('overall-bar-chart');
-            if (!canvas) return;
-
-            if (overallBarChartInstance) {
-                overallBarChartInstance.destroy();
+        // --- Chart Drawing Functions ---
+        const drawOverallChart = (data) => {
+            if (overallPieChart) {
+                overallPieChart.destroy();
             }
 
-            overallBarChartInstance = new Chart(canvas, {
-                type: 'bar',
+            const total = data.overall.present + data.overall.absent;
+            const presentPercentage = total > 0 ? (data.overall.present / total * 100).toFixed(2) : 0;
+            const absentPercentage = total > 0 ? (data.overall.absent / total * 100).toFixed(2) : 0;
+
+            const ctx = document.getElementById('overallPieChart').getContext('2d');
+            overallPieChart = new Chart(ctx, {
+                type: 'pie',
                 data: {
                     labels: ['Present', 'Absent'],
                     datasets: [{
-                        label: 'Total Students',
-                        data: [overallPresent, overallAbsent],
-                        backgroundColor: ['#2563eb', '#dc2626'],
-                        borderColor: ['#1e40af', '#b91c1c'],
-                        borderWidth: 1
+                        data: [data.overall.present, data.overall.absent],
+                        backgroundColor: CHART_COLORS,
+                        hoverOffset: 4
                     }]
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Number of Students'
-                            }
-                        }
-                    },
                     plugins: {
                         legend: {
-                            display: false
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 14
+                                }
+                            }
                         },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    const value = context.raw;
-                                    const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
-                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
-                                    return `${label}${value} (${percentage}%)`;
+                                    const value = context.parsed;
+                                    const percentage = ((value / total) * 100).toFixed(2);
+                                    return `${context.label}: ${value} (${percentage}%)`;
                                 }
                             }
+                        },
+                        title: {
+                            display: true,
+                            text: `Overall: ${presentPercentage}% Present, ${absentPercentage}% Absent`,
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            },
+                            color: '#1f2937'
                         }
                     }
                 }
             });
         };
-        
-        eventSelector.addEventListener('change', (event) => {
-            const selectedEventName = event.target.value;
-            loadAndRenderData(selectedEventName);
-        });
 
+        const drawDepartmentCharts = (departmentName, data) => {
+            const departmentData = data.departments[departmentName];
+            if (!departmentData) return;
+
+            // Draw Department Pie Chart
+            if (departmentPieChart) {
+                departmentPieChart.destroy();
+            }
+            const totalDept = departmentData.present + departmentData.absent;
+            const deptPresentPercentage = totalDept > 0 ? (departmentData.present / totalDept * 100).toFixed(2) : 0;
+            const deptAbsentPercentage = totalDept > 0 ? (departmentData.absent / totalDept * 100).toFixed(2) : 0;
+
+            const deptCtx = document.getElementById('departmentPieChart').getContext('2d');
+            departmentPieChart = new Chart(deptCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Present', 'Absent'],
+                    datasets: [{
+                        data: [departmentData.present, departmentData.absent],
+                        backgroundColor: CHART_COLORS,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed;
+                                    const percentage = ((value / totalDept) * 100).toFixed(2);
+                                    return `${context.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: `Attendance for ${departmentName}: ${deptPresentPercentage}% Present`,
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            color: '#1f2937'
+                        }
+                    }
+                }
+            });
+
+            // Draw Program Bar Graph
+            if (programBarChart) {
+                programBarChart.destroy();
+            }
+            const programLabels = Object.keys(departmentData.programs);
+            const presentData = programLabels.map(program => departmentData.programs[program].present);
+            const absentData = programLabels.map(program => departmentData.programs[program].absent);
+            const programTotals = programLabels.map(program => departmentData.programs[program].present + departmentData.programs[program].absent);
+
+            const barCtx = document.getElementById('programBarGraph').getContext('2d');
+            programBarChart = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: programLabels,
+                    datasets: [
+                        {
+                            label: 'Present',
+                            data: presentData,
+                            backgroundColor: CHART_COLORS[0],
+                            barPercentage: 0.8
+                        },
+                        {
+                            label: 'Absent',
+                            data: absentData,
+                            backgroundColor: CHART_COLORS[1],
+                            barPercentage: 0.8
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            stacked: true,
+                            title: {
+                                display: true,
+                                text: 'Program'
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Students'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    if (Number.isInteger(value)) {
+                                        return value;
+                                    }
+                                    return null;
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const datasetIndex = context.datasetIndex;
+                                    const value = context.parsed.y;
+                                    const programIndex = context.dataIndex;
+                                    const totalForProgram = programTotals[programIndex];
+                                    const percentage = totalForProgram > 0 ? (value / totalForProgram * 100).toFixed(2) : 0;
+                                    return `${context.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: `Attendance per Program in ${departmentName}`,
+                            font: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            color: '#1f2937'
+                        }
+                    }
+                }
+            });
+        };
+
+        // --- Helper Functions ---
+        const populateDepartmentSelector = (data) => {
+            departmentSelector.innerHTML = '<option value="" disabled selected>Select a department</option>';
+            const departments = Object.keys(data.departments).sort();
+            departments.forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept;
+                option.textContent = dept;
+                departmentSelector.appendChild(option);
+            });
+            // Automatically select the first department if available
+            if (departments.length > 0) {
+                departmentSelector.value = departments[0];
+                drawDepartmentCharts(departments[0], data);
+            }
+        };
+
+        const showModal = (title, message) => {
+            modalTitle.textContent = title;
+            modalMessage.textContent = message;
+            modal.style.display = 'flex';
+        };
+
+        // Initialize Firebase on page load
         document.addEventListener('DOMContentLoaded', () => {
             setupFirebase();
         });
     </script>
 </body>
 </html>
+

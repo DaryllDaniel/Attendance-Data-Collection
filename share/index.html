@@ -50,10 +50,26 @@
 
         <!-- Chart Section -->
         <div class="flex-1 bg-gray-50 p-6 rounded-xl shadow-inner">
-            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Department</h2>
-            <div id="department-charts-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full h-auto">
+            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-4">Attendance by Department and Program</h2>
+            
+            <!-- Overall Attendance Bar Chart -->
+            <div class="p-4 bg-white rounded-lg shadow-md mb-6">
+                <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Overall Attendance Summary</h3>
+                <div class="w-full h-64">
+                    <canvas id="overall-bar-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Department Pie Charts Container -->
+            <div id="department-charts-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full h-auto mb-6">
                 <p id="department-charts-placeholder" class="text-gray-500 text-center col-span-1 md:col-span-2">Charts will appear here after data is loaded.</p>
             </div>
+
+            <!-- Program Bar Charts Container -->
+            <div id="program-bar-charts-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full h-auto">
+                <p id="program-bar-charts-placeholder" class="text-gray-500 text-center col-span-1 md:col-span-2 hidden">Program charts will appear here...</p>
+            </div>
+
         </div>
 
     </div>
@@ -70,9 +86,12 @@
         const statusMessage = document.getElementById('status-message');
         const departmentChartsContainer = document.getElementById('department-charts-container');
         const departmentChartsPlaceholder = document.getElementById('department-charts-placeholder');
+        const programBarChartsContainer = document.getElementById('program-bar-charts-container');
 
         let studentData = [];
         let departmentChartInstances = {}; // Object to store individual chart instances
+        let programChartInstances = {}; // Object to store individual bar chart instances
+        let overallBarChartInstance = null; // Instance for the overall bar chart
 
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
@@ -136,6 +155,8 @@
                             statusMessage.textContent = "Data retrieved successfully!";
                             statusMessage.style.color = '#10b981';
                             renderDepartmentPieCharts(studentData);
+                            renderProgramBarCharts(studentData);
+                            renderOverallBarChart(studentData);
                         } else {
                             statusMessage.textContent = "No student data found in the cloud.";
                             statusMessage.style.color = '#dc2626';
@@ -241,6 +262,131 @@
                 departmentChartsContainer.appendChild(deptChartDiv);
 
                 updatePieChart(canvas.id, departmentData[departmentName].present, departmentData[departmentName].absent);
+            });
+        };
+
+        // --- Render Program Bar Charts ---
+        const renderProgramBarCharts = (data) => {
+            programBarChartsContainer.innerHTML = ''; // Clear previous charts
+
+            const programData = data.reduce((acc, row) => {
+                const program = row.program;
+                if (!acc[program]) {
+                    acc[program] = { present: 0, absent: 0 };
+                }
+                acc[program].present += row.year1.present + row.year2.present + row.year3.present + row.year4.present;
+                acc[program].absent += row.year1.absent + row.year2.absent + row.year3.absent + row.year4.absent;
+                return acc;
+            }, {});
+
+            Object.keys(programData).forEach(programName => {
+                const programChartDiv = document.createElement('div');
+                programChartDiv.className = 'p-4 bg-white rounded-lg shadow-md';
+                
+                const heading = document.createElement('h3');
+                heading.className = 'font-semibold text-center text-lg mb-2 text-gray-700';
+                heading.textContent = programName;
+                
+                const canvas = document.createElement('canvas');
+                canvas.id = `prog-chart-${programName.replace(/[^a-zA-Z0-9]/g, '')}`;
+                
+                programChartDiv.appendChild(heading);
+                programChartDiv.appendChild(canvas);
+                programBarChartsContainer.appendChild(programChartDiv);
+
+                updateBarChart(canvas.id, programData[programName].present, programData[programName].absent);
+            });
+        };
+        
+        // --- Helper function to create/update a bar chart ---
+        const updateBarChart = (canvasId, presentCount, absentCount) => {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error(`Canvas element with ID '${canvasId}' not found.`);
+                return;
+            }
+
+            // Destroy previous chart instance if it exists
+            if (programChartInstances[canvasId]) {
+                programChartInstances[canvasId].destroy();
+            }
+
+            const chart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: ['Present', 'Absent'],
+                    datasets: [{
+                        label: 'Attendance',
+                        data: [presentCount, absentCount],
+                        backgroundColor: ['#2563eb', '#dc2626'],
+                        borderColor: ['#1e40af', '#b91c1c'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Students'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            programChartInstances[canvasId] = chart;
+        };
+
+        // --- Render Overall Bar Chart ---
+        const renderOverallBarChart = (data) => {
+            const overallPresent = data.reduce((sum, row) => sum + row.year1.present + row.year2.present + row.year3.present + row.year4.present, 0);
+            const overallAbsent = data.reduce((sum, row) => sum + row.year1.absent + row.year2.absent + row.year3.absent + row.year4.absent, 0);
+
+            const canvas = document.getElementById('overall-bar-chart');
+            if (!canvas) return;
+
+            if (overallBarChartInstance) {
+                overallBarChartInstance.destroy();
+            }
+
+            overallBarChartInstance = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: ['Present', 'Absent'],
+                    datasets: [{
+                        label: 'Total Students',
+                        data: [overallPresent, overallAbsent],
+                        backgroundColor: ['#2563eb', '#dc2626'],
+                        borderColor: ['#1e40af', '#b91c1c'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Students'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
             });
         };
 

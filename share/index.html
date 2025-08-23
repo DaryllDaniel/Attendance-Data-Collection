@@ -11,7 +11,7 @@
     <!-- Firebase SDKs for Cloud Persistence -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         // Expose Firebase services to the global scope
@@ -19,7 +19,6 @@
             initializeApp,
             getAuth,
             signInAnonymously,
-            signInWithCustomToken,
             onAuthStateChanged,
             getFirestore,
             doc,
@@ -78,26 +77,24 @@
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
             try {
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-                if (!firebaseConfig) {
-                    statusMessage.textContent = "Error: This app requires a Firebase connection and is designed to run in a specific environment.";
-                    statusMessage.style.color = '#dc2626';
-                    return;
-                }
-
+                // Use the Firebase config provided by the user.
+                const firebaseConfig = {
+                    apiKey: "AIzaSyDCRT5OxfwUD25pS6igy8v3xYlaGmMXK_0",
+                    authDomain: "event-calendar-prototype-b11b6.firebaseapp.com",
+                    projectId: "event-calendar-prototype-b11b6",
+                    storageBucket: "event-calendar-prototype-b11b6.firebasestorage.app",
+                    messagingSenderId: "532386656284",
+                    appId: "1:532386656284:web:fd4533fb0f54b198752fd9",
+                    measurementId: "G-J10NDCD212"
+                };
+                
+                // Initialize the Firebase app with the hardcoded config
                 const app = window.firebase.initializeApp(firebaseConfig);
                 auth = window.firebase.getAuth(app);
                 db = window.firebase.getFirestore(app);
 
-                // Sign in with the provided custom token
-                if (initialAuthToken) {
-                    await window.firebase.signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await window.firebase.signInAnonymously(auth);
-                }
+                // Use anonymous sign-in, which does not require a custom token.
+                await window.firebase.signInAnonymously(auth);
 
                 // Listen for auth state changes to get the user ID
                 window.firebase.onAuthStateChanged(auth, (user) => {
@@ -126,7 +123,8 @@
                 return;
             }
 
-            const docRef = window.firebase.doc(db, `artifacts/${__app_id}/users/${userId}/${COLLECTION_NAME}`, DOCUMENT_ID);
+            // Reference the correct Firestore path using the user's UID
+            const docRef = window.firebase.doc(db, `artifacts/event-calendar-prototype-b11b6/users/${userId}/${COLLECTION_NAME}`, DOCUMENT_ID);
 
             // Use onSnapshot for real-time data listening
             window.firebase.onSnapshot(docRef, (docSnap) => {

@@ -357,10 +357,12 @@
                 }
                 const totalPresent = row.year1.present + row.year2.present + row.year3.present + row.year4.present;
                 const totalAbsent = row.year1.absent + row.year2.absent + row.year3.absent + row.year4.absent;
+                const total = totalPresent + totalAbsent;
                 acc[row.department].push({
                     program: row.program,
                     present: totalPresent,
-                    absent: totalAbsent
+                    absent: totalAbsent,
+                    total: total
                 });
                 return acc;
             }, {});
@@ -394,7 +396,7 @@
                     programChartDiv.appendChild(canvas);
                     programChartGrid.appendChild(programChartDiv);
 
-                    updateBarChart(canvas.id, program.present, program.absent);
+                    updateProgramBarChart(canvas.id, program.present, program.absent, program.total);
                 });
 
                 deptProgramsDiv.appendChild(programChartGrid);
@@ -403,7 +405,7 @@
         };
         
         // --- Helper function to create/update a bar chart with percentages ---
-        const updateBarChart = (canvasId, presentCount, absentCount) => {
+        const updateProgramBarChart = (canvasId, presentCount, absentCount, totalCount) => {
             const canvas = document.getElementById(canvasId);
             if (!canvas) {
                 console.error(`Canvas element with ID '${canvasId}' not found.`);
@@ -417,12 +419,12 @@
             const chart = new Chart(canvas, {
                 type: 'bar',
                 data: {
-                    labels: ['Present', 'Absent'],
+                    labels: ['Present', 'Absent', 'Total'],
                     datasets: [{
                         label: 'Attendance',
-                        data: [presentCount, absentCount],
-                        backgroundColor: ['#2563eb', '#dc2626'],
-                        borderColor: ['#1e40af', '#b91c1c'],
+                        data: [presentCount, absentCount, totalCount],
+                        backgroundColor: ['#2563eb', '#dc2626', '#16a34a'],
+                        borderColor: ['#1e40af', '#b91c1c', '#15803d'],
                         borderWidth: 1
                     }]
                 },
@@ -450,8 +452,8 @@
                                     }
                                     const value = context.raw;
                                     const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
-                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
-                                    return `${label}${value} (${percentage}%)`;
+                                    const percentage = (value / total) * 100;
+                                    return `${label}${value}`;
                                 }
                             }
                         }

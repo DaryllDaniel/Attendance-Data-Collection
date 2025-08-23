@@ -104,6 +104,19 @@
     </div>
 
     <script type="module">
+        // --- IMPORTANT: Manually paste your Firebase config here ---
+        // You can get this from your Firebase project settings.
+        const YOUR_FIREBASE_CONFIG = {
+              apiKey: "AIzaSyDCRT5OxfwUD25pS6igy8v3xYlaGmMXK_0",
+              authDomain: "event-calendar-prototype-b11b6.firebaseapp.com",
+              projectId: "event-calendar-prototype-b11b6",
+              storageBucket: "event-calendar-prototype-b11b6.firebasestorage.app",
+              messagingSenderId: "532386656284",
+              appId: "1:532386656284:web:fd4533fb0f54b198752fd9",
+              measurementId: "G-J10NDCD212"
+        };
+        const USE_MANUAL_CONFIG = true;
+
         // --- Firebase Service Instances ---
         let db;
         let auth;
@@ -131,14 +144,36 @@
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
             try {
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                // Check if running in the special environment
+                const envAppId = typeof __app_id !== 'undefined' ? __app_id : null;
+                const envFirebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+                const envAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                
+                let app, initialAuthToken, firebaseConfig, appId;
 
-                const app = window.firebase.initializeApp(firebaseConfig);
+                if (envAppId && envFirebaseConfig && envAuthToken && !USE_MANUAL_CONFIG) {
+                    // Use environment variables if available
+                    appId = envAppId;
+                    firebaseConfig = envFirebaseConfig;
+                    initialAuthToken = envAuthToken;
+                } else if (USE_MANUAL_CONFIG && YOUR_FIREBASE_CONFIG.projectId !== "YOUR_PROJECT_ID") {
+                    // Use the manually provided config
+                    appId = YOUR_FIREBASE_CONFIG.projectId;
+                    firebaseConfig = YOUR_FIREBASE_CONFIG;
+                    // For manual hosting, we'll use anonymous sign-in
+                    initialAuthToken = null;
+                } else {
+                    // No valid configuration found
+                    statusMessage.textContent = "Error: This app requires a Firebase connection. Please provide a valid configuration in the code or use the Canvas environment.";
+                    statusMessage.style.color = '#dc2626';
+                    return;
+                }
+
+                app = window.firebase.initializeApp(firebaseConfig);
                 auth = window.firebase.getAuth(app);
                 db = window.firebase.getFirestore(app);
 
+                // Sign in with the provided custom token or anonymously
                 if (initialAuthToken) {
                     await window.firebase.signInWithCustomToken(auth, initialAuthToken);
                 } else {
@@ -148,7 +183,7 @@
                 window.firebase.onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         userId = user.uid;
-                        statusMessage.textContent = "Cloud connection successful!";
+                        statusMessage.textContent = `Cloud connection successful! Your User ID is: ${userId}`;
                         statusMessage.style.color = '#10b981';
                     } else {
                         console.log("User is signed out.");
@@ -253,7 +288,12 @@
                 studentData: JSON.stringify(data)
             };
 
-            const docRef = window.firebase.doc(db, `artifacts/${__app_id}/users/${userId}/${COLLECTION_NAME}`, DOCUMENT_ID);
+            // Use the correct path based on whether it's in a special environment or self-hosted
+            const docPath = typeof __app_id !== 'undefined' 
+                ? `artifacts/${__app_id}/users/${userId}/${COLLECTION_NAME}`
+                : `artifacts/${YOUR_FIREBASE_CONFIG.projectId}/users/${userId}/${COLLECTION_NAME}`;
+
+            const docRef = window.firebase.doc(db, docPath, DOCUMENT_ID);
 
             try {
                 await window.firebase.setDoc(docRef, dataToSave);
@@ -447,4 +487,3 @@
     </script>
 </body>
 </html>
-

@@ -3,24 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV to Cloud</title>
+    <title>Student Data Uploader</title>
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Firebase SDKs for Cloud Persistence -->
     <script type="module">
+        // This is a direct import from Firebase's CDN. It's safe to use.
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
-        // Expose Firebase services to the global scope
+        // Expose Firebase services to the global scope to be used in the script tag below
         window.firebase = {
             initializeApp,
             getAuth,
-            signInWithCustomToken,
             signInAnonymously,
+            signInWithCustomToken,
+            onAuthStateChanged,
             getFirestore,
             doc,
-            getDoc,
             setDoc
         };
     </script>
@@ -45,7 +46,72 @@
             background-color: rgba(0, 0, 255, 0.3);
             z-index: 1;
         }
+        
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
 
+        .modal-content {
+            background-color: #fff;
+            padding: 24px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            position: relative;
+            max-width: 400px;
+            width: 90%;
+            transform: translateY(-20px);
+            animation: slideIn 0.3s forwards;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .close-button {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-size: 24px;
+            font-weight: bold;
+            color: #aaa;
+            cursor: pointer;
+            border: none;
+            background: none;
+        }
+
+        .close-button:hover {
+            color: #000;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #2563eb;
+            animation: spin 1s ease infinite;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive image */
         #top-left-logo {
             position: absolute;
             top: 1rem;
@@ -56,128 +122,102 @@
             border-radius: 0.5rem;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-
-        /* Modal styling */
-        .modal {
-            display: none; /* Hidden by default */
-            position: fixed;
-            z-index: 100;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgb(0,0,0);
-            background-color: rgba(0,0,0,0.4);
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-content {
-            background-color: #fefefe;
-            padding: 24px;
-            border-radius: 0.5rem;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-            max-width: 400px;
-            text-align: center;
-        }
     </style>
 </head>
-<body class="flex flex-col items-center min-h-screen p-4">
+<body class="flex flex-col items-center min-h-screen p-4 z-10 relative">
 
     <!-- Top-left logo -->
     <img id="top-left-logo" src="https://scontent.fcrk1-2.fna.fbcdn.net/v/t39.30808-6/481256091_1075839891225305_8701060058928039111_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=OCjjkE8jx7IQ7kNvwEp79Cp&_nc_oc=AdnDPmGq-xwFdLhQcze1O-nZmR0e5Nr8AX3fDmfdOLUPXALB4MNg7J65H2Q8TE5sY-4&_nc_zt=23&_nc_ht=scontent.fcrk1-2.fna&_nc_gid=nFjzVEKrI6WrhINW3zz39w&oh=00_AfVGG0LH9XXR_Q2o-1bm8ODj0HrJU7A7o6eu4L5YYjY7Cw&oe=68AFB084" alt="Logo">
+    
+    <!-- Main content container -->
+    <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-lg mt-16 z-20">
+        <h1 class="text-3xl font-extrabold text-center text-gray-800 mb-2">Student Data Uploader</h1>
+        <p class="text-center text-gray-600 mb-8">Upload a CSV file and save it to the cloud.</p>
 
-    <div class="text-center mb-8 px-4 z-20">
-        <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-2 drop-shadow-lg">CSV to Cloud</h1>
-        <p class="text-gray-200 drop-shadow-md">Import and save your data to the cloud.</p>
+        <!-- Form for CSV upload -->
+        <form id="uploadForm" class="flex flex-col items-center space-y-4">
+            <div class="w-full">
+                <label for="event-name" class="block text-sm font-medium text-gray-700">Event Name</label>
+                <input type="text" id="event-name" name="event-name" required placeholder="e.g., General Assembly 2024"
+                       class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+            </div>
+
+            <div class="w-full">
+                <label for="csv-file" class="block text-sm font-medium text-gray-700">Select CSV File</label>
+                <input type="file" id="csv-file" name="csv-file" accept=".csv" required
+                       class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+            </div>
+
+            <button type="submit" id="save-data-btn" class="w-full px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Save Data to Cloud
+            </button>
+        </form>
+
+        <!-- Status Message Box -->
+        <div id="status-message" class="text-center p-4 rounded-md mt-6 hidden"></div>
     </div>
 
-    <!-- Main Application Container -->
-    <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-2xl flex flex-col gap-8 z-20">
-
-        <!-- File Upload Section -->
-        <div class="flex flex-col items-center gap-4">
-            <label for="csv-file" class="text-gray-700 text-lg font-semibold">Select a CSV file to upload:</label>
-            <input type="file" id="csv-file" accept=".csv" class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 p-2">
-            <button id="import-btn" class="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700 transition-colors disabled:opacity-50" disabled>
-                Import Data
-            </button>
-        </div>
-
-        <!-- Status Message Display -->
-        <div id="status-message" class="text-center p-4 text-gray-500 font-medium bg-gray-100 rounded-lg hidden">
-            Awaiting file import...
-        </div>
-
-        <!-- Data Display Area -->
-        <div id="data-table-container" class="mt-6 hidden">
-            <h2 class="text-xl font-bold mb-4 text-gray-800">Imported Data:</h2>
-            <div class="overflow-x-auto rounded-lg shadow-md">
-                <table id="data-table" class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-200">
-                        <tr></tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        <!-- Data rows will be inserted here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Save as Event Section -->
-        <div id="save-section" class="flex flex-col items-center gap-4 mt-8 hidden">
-            <h2 class="text-xl font-bold mb-2 text-gray-800">Save as Event:</h2>
-            <input type="text" id="event-name-input" placeholder="Enter event name (e.g., 'Meeting 1')" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <button id="save-event-btn" class="w-full sm:w-auto px-6 py-3 bg-green-600 text-white font-bold rounded-lg shadow-md hover:bg-green-700 transition-colors">
-                Save Event
-            </button>
-        </div>
-
-        <!-- Overwrite Confirmation Modal -->
-        <div id="overwrite-modal" class="modal">
-            <div class="modal-content">
-                <h3 class="text-lg font-bold mb-4">Event Exists</h3>
-                <p class="mb-6">An event with this name already exists. Do you want to overwrite it?</p>
-                <div class="flex justify-center gap-4">
-                    <button id="overwrite-yes-btn" class="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700">Yes, Overwrite</button>
-                    <button id="overwrite-no-btn" class="px-6 py-2 bg-gray-400 text-white font-bold rounded-lg hover:bg-gray-500">No, Cancel</button>
-                </div>
-            </div>
+    <!-- The custom modal for messages -->
+    <div id="message-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <div id="modal-spinner" class="spinner hidden"></div>
+            <p id="modal-text" class="text-gray-700 font-medium"></p>
         </div>
     </div>
 
-    <script type="module">
+    <script>
+        // --- DOM Element References ---
+        const uploadForm = document.getElementById('uploadForm');
+        const eventNameInput = document.getElementById('event-name');
+        const csvFileInput = document.getElementById('csv-file');
+        const statusMessage = document.getElementById('status-message');
+        const messageModal = document.getElementById('message-modal');
+        const modalText = document.getElementById('modal-text');
+        const modalSpinner = document.getElementById('modal-spinner');
+        const modalCloseButton = document.querySelector('#message-modal .close-button');
+        const saveButton = document.getElementById('save-data-btn');
+
         // --- Firebase Service Instances ---
         let db;
         let auth;
         let userId;
+        const EVENTS_COLLECTION = "events";
 
-        // --- Firestore Collection and Document Path
-        const COLLECTION_NAME = "studentData"; // For storing the main parsed data
-        const EVENTS_COLLECTION = "events"; // For storing named events
+        // --- Functions for the custom modal ---
+        const showModal = (message, isLoading = false) => {
+            modalText.textContent = message;
+            if (isLoading) {
+                modalSpinner.classList.remove('hidden');
+                modalCloseButton.style.display = 'none';
+            } else {
+                modalSpinner.classList.add('hidden');
+                modalCloseButton.style.display = 'block';
+            }
+            messageModal.style.display = 'flex';
+        };
 
-        // --- DOM Element References ---
-        const csvFile = document.getElementById('csv-file');
-        const importBtn = document.getElementById('import-btn');
-        const statusMessage = document.getElementById('status-message');
-        const dataTableContainer = document.getElementById('data-table-container');
-        const dataTableHead = document.querySelector('#data-table thead tr');
-        const dataTableBody = document.querySelector('#data-table tbody');
-        const saveSection = document.getElementById('save-section');
-        const eventNameInput = document.getElementById('event-name-input');
-        const saveEventBtn = document.getElementById('save-event-btn');
-        const overwriteModal = document.getElementById('overwrite-modal');
-        const overwriteYesBtn = document.getElementById('overwrite-yes-btn');
-        const overwriteNoBtn = document.getElementById('overwrite-no-btn');
-        
-        // --- Global Data Variable ---
-        let importedData = null;
+        const hideModal = () => {
+            messageModal.style.display = 'none';
+        };
 
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
             try {
                 // IMPORTANT: The following variables are provided by the hosting environment.
+                // If hosting on GitHub, replace these with your actual Firebase project config.
+                // For example:
+                // const firebaseConfig = {
+                //   apiKey: "YOUR_API_KEY",
+                //   authDomain: "YOUR_AUTH_DOMAIN",
+                //   projectId: "YOUR_PROJECT_ID",
+                //   storageBucket: "YOUR_STORAGE_BUCKET",
+                //   messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+                //   appId: "YOUR_APP_ID"
+                // };
+                // const initialAuthToken = null; // Or a token you manage
+                // const appId = firebaseConfig.projectId; // Or a specific app ID you manage
+
                 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
                 const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
                 const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
@@ -196,170 +236,97 @@
                 // Set the user ID for Firestore operations
                 userId = auth.currentUser.uid;
                 
-                statusMessage.textContent = "Connected to the cloud. Ready to import.";
-                statusMessage.classList.remove('hidden');
-                statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
-                statusMessage.classList.add('text-green-600', 'bg-green-100');
+                showStatusMessage("Connected to the cloud. You can now upload a CSV file.", 'success');
 
             } catch (error) {
                 console.error("Firebase setup failed:", error);
-                statusMessage.textContent = "Error setting up cloud connection. Please try again later.";
-                statusMessage.classList.remove('hidden');
-                statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
-                statusMessage.classList.add('text-red-600', 'bg-red-100');
+                showStatusMessage("Error setting up cloud connection. Please try again later.", 'error');
             }
         };
 
-        // --- Main CSV Parsing and Rendering Logic ---
-        const parseAndRenderCSV = (file) => {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const text = event.target.result;
-                const rows = text.split('\n').map(row => row.split(',').map(cell => cell.trim()));
-                
-                // Get headers and data
-                const headers = rows[0];
-                const data = rows.slice(1);
-
-                // Clear previous data
-                dataTableHead.innerHTML = '';
-                dataTableBody.innerHTML = '';
-                
-                // Render headers
-                headers.forEach(headerText => {
-                    const th = document.createElement('th');
-                    th.textContent = headerText;
-                    th.className = 'px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider';
-                    dataTableHead.appendChild(th);
-                });
-
-                // Render data rows
-                data.forEach(row => {
-                    if (row.join('').length > 0) { // Check for empty rows
-                        const tr = document.createElement('tr');
-                        tr.className = 'hover:bg-gray-50';
-                        row.forEach(cellText => {
-                            const td = document.createElement('td');
-                            td.textContent = cellText;
-                            td.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-800';
-                            tr.appendChild(td);
-                        });
-                        dataTableBody.appendChild(tr);
-                    }
-                });
-
-                // Store the parsed data globally for saving
-                importedData = rows;
-                
-                // Show the data table and save section
-                dataTableContainer.classList.remove('hidden');
-                saveSection.classList.remove('hidden');
-                statusMessage.textContent = "Data successfully imported!";
-                statusMessage.classList.add('text-green-600', 'bg-green-100');
-                statusMessage.classList.remove('text-gray-500', 'bg-gray-100', 'text-red-600', 'bg-red-100');
-            };
-            reader.onerror = function(error) {
-                console.error("Error reading file:", error);
-                statusMessage.textContent = "Error reading file. Please try again.";
-                statusMessage.classList.add('text-red-600', 'bg-red-100');
-                statusMessage.classList.remove('text-gray-500', 'bg-gray-100', 'text-green-600', 'bg-green-100');
-            };
-            reader.readAsText(file);
+        // --- Utility function to show status messages
+        const showStatusMessage = (message, type) => {
+            statusMessage.textContent = message;
+            statusMessage.classList.remove('hidden', 'bg-green-100', 'text-green-600', 'bg-red-100', 'text-red-600', 'bg-yellow-100', 'text-yellow-600');
+            if (type === 'success') {
+                statusMessage.classList.add('bg-green-100', 'text-green-600');
+            } else if (type === 'error') {
+                statusMessage.classList.add('bg-red-100', 'text-red-600');
+            } else if (type === 'warning') {
+                statusMessage.classList.add('bg-yellow-100', 'text-yellow-600');
+            }
         };
 
-        // --- Save Event Logic ---
-        const saveEvent = async (overwrite = false) => {
-            if (!importedData) {
-                statusMessage.textContent = "No data imported to save!";
-                statusMessage.classList.add('text-red-600', 'bg-red-100');
-                statusMessage.classList.remove('text-gray-500', 'bg-gray-100', 'text-green-600', 'bg-green-100');
+        // --- Main form submission logic ---
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!db || !userId) {
+                showStatusMessage("Cloud connection not ready. Please wait.", 'warning');
                 return;
             }
 
             const eventName = eventNameInput.value.trim();
-            if (!eventName) {
-                statusMessage.textContent = "Please enter an event name!";
-                statusMessage.classList.add('text-red-600', 'bg-red-100');
-                statusMessage.classList.remove('text-gray-500', 'bg-gray-100', 'text-green-600', 'bg-green-100');
+            const file = csvFileInput.files[0];
+
+            if (!eventName || !file) {
+                showModal("Please provide an event name and select a CSV file.", false);
                 return;
             }
 
-            const eventDocRef = window.firebase.doc(db, `artifacts/${auth.app.options.projectId}/users/${userId}/${EVENTS_COLLECTION}`, eventName);
+            // Show loading modal
+            showModal("Saving data to the cloud...", true);
 
-            if (!overwrite) {
-                // Check if document exists
-                try {
-                    const docSnap = await window.firebase.getDoc(eventDocRef);
-                    if (docSnap.exists()) {
-                        // Show modal to confirm overwrite
-                        overwriteModal.style.display = 'flex';
-                        return; // Exit function, wait for user's decision
-                    }
-                } catch (error) {
-                    console.error("Error checking for existing event:", error);
-                    statusMessage.textContent = "Error checking event. Please try again.";
-                    statusMessage.classList.add('text-red-600', 'bg-red-100');
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const csvData = event.target.result;
+                const rows = csvData.split('\n').map(row => row.split(','));
+
+                // Basic validation: check if the CSV has content
+                if (rows.length <= 1) {
+                    showModal("The selected CSV file appears to be empty or invalid.", false);
                     return;
                 }
-            }
 
-            // Proceed with saving
-            try {
-                await window.firebase.setDoc(eventDocRef, {
-                    timestamp: new Date().toISOString(),
-                    data: JSON.stringify(importedData)
-                });
-                statusMessage.textContent = `Event "${eventName}" saved successfully!`;
-                statusMessage.classList.add('text-green-600', 'bg-green-100');
-                statusMessage.classList.remove('text-gray-500', 'bg-gray-100', 'text-red-600', 'bg-red-100');
-                overwriteModal.style.display = 'none'; // Hide modal if it was shown
-            } catch (error) {
-                console.error("Error saving event:", error);
-                statusMessage.textContent = `Error saving event "${eventName}".`;
-                statusMessage.classList.add('text-red-600', 'bg-red-100');
-                statusMessage.classList.remove('text-gray-500', 'bg-gray-100', 'text-green-600', 'bg-green-100');
-            }
-        };
-
-        // --- Event Listeners ---
-        csvFile.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                importBtn.disabled = false;
-                statusMessage.textContent = "File selected. Click 'Import Data' to proceed.";
-                statusMessage.classList.add('text-gray-500', 'bg-gray-100');
-                statusMessage.classList.remove('text-green-600', 'bg-green-100', 'text-red-600', 'bg-red-100');
-            } else {
-                importBtn.disabled = true;
-                statusMessage.textContent = "Awaiting file import...";
-                statusMessage.classList.add('text-gray-500', 'bg-gray-100');
-                statusMessage.classList.remove('text-green-600', 'bg-green-100', 'text-red-600', 'bg-red-100');
-            }
+                try {
+                    // Create a document reference with the event name as the document ID
+                    const docRef = window.firebase.doc(db, `artifacts/${auth.app.options.projectId}/users/${userId}/${EVENTS_COLLECTION}`, eventName);
+                    
+                    // The data must be converted to a JSON string for Firestore to save it properly
+                    await window.firebase.setDoc(docRef, {
+                        timestamp: window.firebase.serverTimestamp,
+                        data: JSON.stringify(rows)
+                    });
+                    
+                    showModal("Data saved to the cloud successfully!", false);
+                    showStatusMessage(`Data for event "${eventName}" was saved successfully!`, 'success');
+                    uploadForm.reset();
+                } catch (error) {
+                    console.error("Error saving document: ", error);
+                    showModal(`Error saving data. Please check the console for details.`, false);
+                    showStatusMessage(`Error saving data for event "${eventName}".`, 'error');
+                }
+            };
+            reader.onerror = () => {
+                showModal("Error reading the file. Please try again.", false);
+            };
+            reader.readAsText(file);
         });
 
-        importBtn.addEventListener('click', () => {
-            const file = csvFile.files[0];
-            if (file) {
-                parseAndRenderCSV(file);
+        // --- Close modal functionality ---
+        modalCloseButton.addEventListener('click', hideModal);
+
+        // Close modal on click outside
+        window.addEventListener('click', (event) => {
+            if (event.target === messageModal) {
+                hideModal();
             }
-        });
-
-        saveEventBtn.addEventListener('click', () => {
-            saveEvent();
-        });
-
-        overwriteYesBtn.addEventListener('click', () => {
-            saveEvent(true);
-        });
-
-        overwriteNoBtn.addEventListener('click', () => {
-            overwriteModal.style.display = 'none';
-            statusMessage.textContent = "Save operation cancelled.";
-            statusMessage.classList.add('text-gray-500', 'bg-gray-100');
-            statusMessage.classList.remove('text-green-600', 'bg-green-100', 'text-red-600', 'bg-red-100');
         });
 
         // --- Initial App Setup ---
-        document.addEventListener('DOMContentLoaded', setupFirebase);
+        document.addEventListener('DOMContentLoaded', () => {
+            setupFirebase();
+        });
     </script>
 </body>
 </html>

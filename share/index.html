@@ -31,7 +31,7 @@
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
-            background-image: url('https://scontent.fcrk1-1.fna.fbcdn.net/v/t39.30808-6/534829113_1219906786818614_3623306942044619088_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=IVr9Yr1-pvUQkNvwFa9iO5&_nc_oc=AdntxIkfqY4bkAXBlJJlzddtb7L6hdtB7b9Szq2OuBkDf7fySj9CjncTopvIdlkE_aA&_nc_zt=23&_nc_ht=scontent.fcrk1-1.fna&_nc_gid=wsNnun-HKCpyMJFkIDXHpA&oh=00_AfUlrYAo7YO63AptckNhX1w5AiCyZbvdvxxE5l_uo6vsQw&oe=68AF8B73');
+            background-image: url('https://scontent.fcrk1-1.fna.fbcdn.net/v/t39.30808-6/534829113_1219906786818614_3623306942044619088_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=IVr9Yr1-pvUQkNvwFa9iO5&_nc_oc=AdntxIkfqY4bkAXBlJJlzddtb7L6hdtB7b9Szq2OuBkDf7fySj9CjncTopvIdlkE_aA&_nc_zt=23&_nc_ht=scontent.fcrk1-1.fna&_nc_gid=wsNnun-HKCpyMJFkIDXHpA&oh=00_AfUlrYAo7YO63AptckNh1w5AiCyZbvdvxxE5l_uo6vsQw&oe=68AF8B73');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -168,8 +168,9 @@
         // --- Firebase Service Instances ---
         let db;
         let auth;
-        // The collection path is now constructed to match your security rules
+        // The collection path is now constructed to match standard security rules
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // Updated path to reflect standard security rules
         const EVENTS_COLLECTION_PATH = `artifacts/${appId}/public/data/events`;
 
         // --- DOM Element References ---
@@ -261,7 +262,7 @@
                 }
             } catch (error) {
                 console.error("Error fetching events:", error);
-                statusMessage.textContent = "Error loading events. Please check your Firebase permissions.";
+                statusMessage.textContent = "Error loading events. Please check your Firebase permissions. The data might be in the wrong location.";
                 statusMessage.classList.remove('hidden');
                 statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
                 statusMessage.classList.add('text-red-600', 'bg-red-100');
@@ -289,6 +290,15 @@
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
+                    
+                    // Add a check to see if the 'data' field exists and is a string
+                    if (!data.data || typeof data.data !== 'string') {
+                        statusMessage.textContent = `Document for "${eventName}" is missing the 'data' field or it's not a string.`;
+                        statusMessage.classList.remove('hidden', 'bg-gray-100');
+                        statusMessage.classList.add('text-red-600', 'bg-red-100');
+                        return;
+                    }
+                    
                     const rawData = JSON.parse(data.data);
                     
                     studentData = parseRawData(rawData);
@@ -314,17 +324,17 @@
                         departmentSlider.parentElement.classList.add('hidden');
                     }
                 } else {
-                    statusMessage.textContent = `No data found for event "${eventName}".`;
+                    statusMessage.textContent = `Error: Document "${eventName}" does not exist.`;
                     statusMessage.classList.remove('hidden');
                     statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
-                    statusMessage.classList.add('text-yellow-600', 'bg-yellow-100');
+                    statusMessage.classList.add('text-red-600', 'bg-red-100');
                     
                     departmentProgramBarChartsContainer.classList.add('hidden');
                     departmentSlider.parentElement.classList.add('hidden');
                 }
             } catch (e) {
                 console.error("Error loading data from event:", e);
-                statusMessage.textContent = "Error loading data from the cloud.";
+                statusMessage.textContent = "Error loading data from the cloud. Please check the data format in Firestore.";
                 statusMessage.classList.remove('hidden');
                 statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
                 statusMessage.classList.add('text-red-600', 'bg-red-100');

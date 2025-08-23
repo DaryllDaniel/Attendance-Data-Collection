@@ -130,6 +130,8 @@
         const pieChartsContainer = document.getElementById('pie-charts-container');
         const pieChartsPlaceholder = document.getElementById('pie-charts-placeholder');
         const programBarChartsContainer = document.getElementById('program-bar-charts-container');
+        const programBarChartsPlaceholder = document.getElementById('program-bar-charts-placeholder');
+
 
         let studentData = [];
         let chartInstances = {}; // Combined object to store all chart instances
@@ -402,6 +404,13 @@
         const renderProgramBarCharts = (data) => {
             programBarChartsContainer.innerHTML = ''; // Clear previous charts
             
+            // Show or hide placeholder based on whether there's data
+            if (data.length > 0) {
+                programBarChartsPlaceholder.classList.add('hidden');
+            } else {
+                programBarChartsPlaceholder.classList.remove('hidden');
+            }
+
             // Group data by department
             const groupedData = data.reduce((acc, row) => {
                 if (!acc[row.department]) {

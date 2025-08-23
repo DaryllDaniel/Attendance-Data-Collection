@@ -30,6 +30,12 @@
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
         }
+        /* Fix for charts not appearing */
+        .chart-container {
+            position: relative;
+            height: 300px; /* Explicit height for charts */
+            width: 100%;
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex flex-col items-center min-h-screen p-4">
@@ -58,7 +64,7 @@
             <!-- Overall Attendance Bar Chart -->
             <div class="p-4 bg-white rounded-lg shadow-md mb-6 w-full">
                 <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Overall Attendance Summary</h3>
-                <div class="w-full h-64">
+                <div class="chart-container">
                     <canvas id="overall-bar-chart"></canvas>
                 </div>
             </div>
@@ -211,11 +217,16 @@
                 const heading = document.createElement('h3');
                 heading.className = 'font-semibold text-center text-lg mb-2 text-gray-700';
                 heading.textContent = departmentName;
+                
+                const chartContainer = document.createElement('div');
+                chartContainer.className = 'chart-container';
                 const canvas = document.createElement('canvas');
                 const canvasId = `dept-chart-${departmentName.replace(/[^a-zA-Z0-9]/g, '')}`;
                 canvas.id = canvasId;
+                
+                chartContainer.appendChild(canvas);
                 deptChartDiv.appendChild(heading);
-                deptChartDiv.appendChild(canvas);
+                deptChartDiv.appendChild(chartContainer);
                 pieChartsContainer.appendChild(deptChartDiv);
                 updatePieChart(canvasId, deptData.totalPresent, deptData.totalAbsent);
 
@@ -226,11 +237,16 @@
                     const progDistHeading = document.createElement('h3');
                     progDistHeading.className = 'font-semibold text-center text-lg mb-2 text-gray-700';
                     progDistHeading.textContent = `${departmentName} Program Distribution`;
+                    
+                    const progDistChartContainer = document.createElement('div');
+                    progDistChartContainer.className = 'chart-container';
                     const progDistCanvas = document.createElement('canvas');
                     const progDistCanvasId = `prog-dist-chart-${departmentName.replace(/[^a-zA-Z0-9]/g, '')}`;
                     progDistCanvas.id = progDistCanvasId;
+                    
+                    progDistChartContainer.appendChild(progDistCanvas);
                     progDistChartDiv.appendChild(progDistHeading);
-                    progDistChartDiv.appendChild(progDistCanvas);
+                    progDistChartDiv.appendChild(progDistChartContainer);
                     pieChartsContainer.appendChild(progDistChartDiv);
                     
                     const programLabels = deptData.programs.map(p => p.name);
@@ -266,6 +282,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             position: 'bottom',
@@ -318,6 +335,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             position: 'bottom',
@@ -389,11 +407,14 @@
                     heading.className = 'font-semibold text-center text-md mb-2 text-gray-700';
                     heading.textContent = program.program;
                     
+                    const chartContainer = document.createElement('div');
+                    chartContainer.className = 'chart-container';
                     const canvas = document.createElement('canvas');
                     canvas.id = `prog-bar-chart-${program.program.replace(/[^a-zA-Z0-9]/g, '')}`;
                     
+                    chartContainer.appendChild(canvas);
                     programChartDiv.appendChild(heading);
-                    programChartDiv.appendChild(canvas);
+                    programChartDiv.appendChild(chartContainer);
                     programChartGrid.appendChild(programChartDiv);
 
                     updateProgramBarChart(canvas.id, program.present, program.absent, program.total);
@@ -430,6 +451,7 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
                         y: {
                             beginAtZero: true,

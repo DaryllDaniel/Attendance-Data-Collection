@@ -32,16 +32,19 @@
         }
     </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <!-- Separate div for title and description -->
+    <div class="text-center mb-8 px-4">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800 mb-2">Student Data Viewer</h1>
+        <p class="text-gray-600">This app retrieves student attendance data from the cloud to display charts, grouped by department.</p>
+    </div>
 
     <!-- Main Application Container -->
     <div class="bg-white p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col lg:flex-row gap-8">
 
         <!-- Data Display and Controls Section -->
         <div class="flex-1">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800 mb-2">Student Data Viewer</h1>
-            <p class="text-gray-600 mb-6">This app retrieves student attendance data from the cloud to display charts, grouped by department.</p>
-            
             <!-- Loading and Status Messages -->
             <div id="status-message" class="text-center p-4 text-gray-500 font-medium bg-gray-100 rounded-lg mb-6">
                 Connecting to the cloud...
@@ -92,6 +95,7 @@
         let departmentChartInstances = {}; // Object to store individual chart instances
         let programChartInstances = {}; // Object to store individual bar chart instances
         let overallBarChartInstance = null; // Instance for the overall bar chart
+        let programDistributionChartInstances = {}; // New object for program distribution pie charts
 
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
@@ -265,40 +269,84 @@
             });
         };
 
-        // --- Render Program Bar Charts ---
+        // --- Render Program Bar Charts and Multi-Program Pie Charts ---
         const renderProgramBarCharts = (data) => {
             programBarChartsContainer.innerHTML = ''; // Clear previous charts
-
-            const programData = data.reduce((acc, row) => {
-                const program = row.program;
-                if (!acc[program]) {
-                    acc[program] = { present: 0, absent: 0 };
+            
+            // Group data by department
+            const groupedData = data.reduce((acc, row) => {
+                if (!acc[row.department]) {
+                    acc[row.department] = [];
                 }
-                acc[program].present += row.year1.present + row.year2.present + row.year3.present + row.year4.present;
-                acc[program].absent += row.year1.absent + row.year2.absent + row.year3.absent + row.year4.absent;
+                const totalPresent = row.year1.present + row.year2.present + row.year3.present + row.year4.present;
+                const totalAbsent = row.year1.absent + row.year2.absent + row.year3.absent + row.year4.absent;
+                acc[row.department].push({
+                    program: row.program,
+                    present: totalPresent,
+                    absent: totalAbsent
+                });
                 return acc;
             }, {});
+            
+            // Loop through each department and its programs
+            Object.keys(groupedData).forEach(departmentName => {
+                const departmentPrograms = groupedData[departmentName];
+                const deptProgramsDiv = document.createElement('div');
+                deptProgramsDiv.className = 'p-4 bg-white rounded-lg shadow-md col-span-1 md:col-span-2';
 
-            Object.keys(programData).forEach(programName => {
-                const programChartDiv = document.createElement('div');
-                programChartDiv.className = 'p-4 bg-white rounded-lg shadow-md';
-                
-                const heading = document.createElement('h3');
-                heading.className = 'font-semibold text-center text-lg mb-2 text-gray-700';
-                heading.textContent = programName;
-                
-                const canvas = document.createElement('canvas');
-                canvas.id = `prog-chart-${programName.replace(/[^a-zA-Z0-9]/g, '')}`;
-                
-                programChartDiv.appendChild(heading);
-                programChartDiv.appendChild(canvas);
-                programBarChartsContainer.appendChild(programChartDiv);
+                const deptTitle = document.createElement('h3');
+                deptTitle.className = 'font-bold text-xl text-blue-800 mb-4 text-center';
+                deptTitle.textContent = `${departmentName} Programs`;
+                deptProgramsDiv.appendChild(deptTitle);
 
-                updateBarChart(canvas.id, programData[programName].present, programData[programName].absent);
+                // Check for multiple programs to render the distribution pie chart
+                if (departmentPrograms.length > 1) {
+                    const progDistDiv = document.createElement('div');
+                    progDistDiv.className = 'p-4 bg-gray-50 rounded-lg shadow-sm mb-6';
+                    const progDistHeading = document.createElement('h4');
+                    progDistHeading.className = 'font-semibold text-center text-md mb-2 text-gray-700';
+                    progDistHeading.textContent = `Attendees Distribution Across Programs`;
+                    const progDistCanvas = document.createElement('canvas');
+                    const canvasId = `prog-dist-chart-${departmentName.replace(/[^a-zA-Z0-9]/g, '')}`;
+                    progDistCanvas.id = canvasId;
+
+                    progDistDiv.appendChild(progDistHeading);
+                    progDistDiv.appendChild(progDistCanvas);
+                    deptProgramsDiv.appendChild(progDistDiv);
+
+                    // Create the pie chart for program distribution
+                    const programLabels = departmentPrograms.map(p => p.program);
+                    const programPresentData = departmentPrograms.map(p => p.present);
+                    updateProgramDistributionPieChart(canvasId, programLabels, programPresentData);
+                }
+
+                const programChartGrid = document.createElement('div');
+                programChartGrid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6';
+                
+                departmentPrograms.forEach(program => {
+                    const programChartDiv = document.createElement('div');
+                    programChartDiv.className = 'p-4 bg-gray-50 rounded-lg shadow-sm';
+                    
+                    const heading = document.createElement('h4');
+                    heading.className = 'font-semibold text-center text-md mb-2 text-gray-700';
+                    heading.textContent = program.program;
+                    
+                    const canvas = document.createElement('canvas');
+                    canvas.id = `prog-bar-chart-${program.program.replace(/[^a-zA-Z0-9]/g, '')}`;
+                    
+                    programChartDiv.appendChild(heading);
+                    programChartDiv.appendChild(canvas);
+                    programChartGrid.appendChild(programChartDiv);
+
+                    updateBarChart(canvas.id, program.present, program.absent);
+                });
+
+                deptProgramsDiv.appendChild(programChartGrid);
+                programBarChartsContainer.appendChild(deptProgramsDiv);
             });
         };
         
-        // --- Helper function to create/update a bar chart ---
+        // --- Helper function to create/update a bar chart with percentages ---
         const updateBarChart = (canvasId, presentCount, absentCount) => {
             const canvas = document.getElementById(canvasId);
             if (!canvas) {
@@ -337,6 +385,20 @@
                     plugins: {
                         legend: {
                             display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    const value = context.raw;
+                                    const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
+                                    return `${label}${value} (${percentage}%)`;
+                                }
+                            }
                         }
                     }
                 }
@@ -345,7 +407,7 @@
             programChartInstances[canvasId] = chart;
         };
 
-        // --- Render Overall Bar Chart ---
+        // --- Render Overall Bar Chart with Percentages ---
         const renderOverallBarChart = (data) => {
             const overallPresent = data.reduce((sum, row) => sum + row.year1.present + row.year2.present + row.year3.present + row.year4.present, 0);
             const overallAbsent = data.reduce((sum, row) => sum + row.year1.absent + row.year2.absent + row.year3.absent + row.year4.absent, 0);
@@ -384,10 +446,77 @@
                     plugins: {
                         legend: {
                             display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    const value = context.raw;
+                                    const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
+                                    return `${label}${value} (${percentage}%)`;
+                                }
+                            }
                         }
                     }
                 }
             });
+        };
+
+        // --- New Helper function for program distribution pie chart ---
+        const updateProgramDistributionPieChart = (canvasId, labels, data) => {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) {
+                console.error(`Canvas element with ID '${canvasId}' not found.`);
+                return;
+            }
+
+            if (programDistributionChartInstances[canvasId]) {
+                programDistributionChartInstances[canvasId].destroy();
+            }
+
+            const chart = new Chart(canvas, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: ['#f59e0b', '#10b981', '#6366f1', '#ef4444', '#3b82f6', '#ec4899', '#a855f7'],
+                        hoverOffset: 8,
+                        borderWidth: 2,
+                        borderColor: '#ffffff',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(tooltipItem) {
+                                    const value = tooltipItem.raw;
+                                    const total = tooltipItem.dataset.data.reduce((acc, curr) => acc + curr, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
+                                    return ` ${tooltipItem.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    },
+                    cutout: '40%',
+                }
+            });
+
+            programDistributionChartInstances[canvasId] = chart;
         };
 
         // --- Initial App Setup ---

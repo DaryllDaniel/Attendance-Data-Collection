@@ -182,13 +182,15 @@
         <div id="department-charts-container" class="flex flex-col justify-center items-center gap-8 mt-6 hidden">
             <!-- Department Summary -->
             <div id="department-summary" class="w-full md:w-1/2 flex justify-around p-4 rounded-lg bg-gray-100 shadow-md">
-                <p class="text-lg text-gray-800 font-semibold flex items-center gap-2">
+                <p class="text-lg text-gray-800 font-semibold flex flex-col items-center gap-1">
                     <span class="w-4 h-4 rounded-full bg-blue-500"></span>
                     Present: <span id="total-present" class="text-xl font-bold text-blue-700">0</span>
+                    <span id="present-percentage" class="text-sm font-normal text-blue-500"></span>
                 </p>
-                <p class="text-lg text-gray-800 font-semibold flex items-center gap-2">
+                <p class="text-lg text-gray-800 font-semibold flex flex-col items-center gap-1">
                     <span class="w-4 h-4 rounded-full bg-red-500"></span>
                     Absent: <span id="total-absent" class="text-xl font-bold text-red-700">0</span>
+                    <span id="absent-percentage" class="text-sm font-normal text-red-500"></span>
                 </p>
             </div>
 
@@ -202,10 +204,9 @@
             <!-- Program Charts Container -->
             <div class="w-full">
                 <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Programs</h2>
-                <!-- Removed the grid layout -->
                 <div id="program-charts-container" class="flex flex-col items-center gap-8">
                     <!-- This will now be a single chart for the whole department -->
-                    <div id="department-programs-chart-container" class="w-full md:w-1/2 mx-auto">
+                    <div id="department-programs-chart-container" class="w-full">
                         <div class="flex justify-center items-center h-64 md:h-80">
                             <canvas id="departmentProgramsChart" class="max-h-full max-w-full"></canvas>
                         </div>
@@ -265,6 +266,8 @@
         const departmentProgramsChartCanvas = document.getElementById('departmentProgramsChart');
         const totalPresentSpan = document.getElementById('total-present');
         const totalAbsentSpan = document.getElementById('total-absent');
+        const presentPercentageSpan = document.getElementById('present-percentage');
+        const absentPercentageSpan = document.getElementById('absent-percentage');
 
         // --- Event Listeners ---
         eventSelector.addEventListener('change', (e) => {
@@ -455,20 +458,20 @@
                     const presentIndex = headers.indexOf(`${year} Year Present`);
                     const absentIndex = headers.indexOf(`${year} Year Absent`);
 
-                    const presentCount = parseInt(row[presentIndex], 10) || 0;
-                    const absentCount = parseInt(row[absentIndex], 10) || 0;
+                    const present = parseInt(row[presentIndex] || 0, 10);
+                    const absent = parseInt(row[absentIndex] || 0, 10);
 
-                    // Update overall data
-                    overall.present += presentCount;
-                    overall.absent += absentCount;
+                    // Add to overall totals
+                    overall.present += present;
+                    overall.absent += absent;
 
-                    // Update department data
-                    departments[department].present[i] += presentCount;
-                    departments[department].absent[i] += absentCount;
+                    // Add to department totals
+                    departments[department].present[i] += present;
+                    departments[department].absent[i] += absent;
 
-                    // Update program data
-                    departments[department].programs[program].present[i] += presentCount;
-                    departments[department].programs[program].absent[i] += absentCount;
+                    // Add to program totals
+                    departments[department].programs[program].present[i] += present;
+                    departments[department].programs[program].absent[i] += absent;
                 });
             });
 
@@ -481,20 +484,23 @@
                 overallPieChart.destroy();
             }
 
+            const total = data.overall.present + data.overall.absent;
+            const presentPercentage = total > 0 ? ((data.overall.present / total) * 100).toFixed(2) : 0;
+            const absentPercentage = total > 0 ? ((data.overall.absent / total) * 100).toFixed(2) : 0;
+
             const ctx = overallPieChartCanvas.getContext('2d');
             overallPieChart = new Chart(ctx, {
                 type: 'pie',
                 data: {
-                    labels: ['Present', 'Absent'],
+                    labels: [`Present: ${presentPercentage}%`, `Absent: ${absentPercentage}%`],
                     datasets: [{
-                        label: 'Overall Attendance',
                         data: [data.overall.present, data.overall.absent],
                         backgroundColor: CHART_COLORS,
-                        borderWidth: 1
                     }]
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     plugins: {
                         legend: {
                             position: 'top',
@@ -504,187 +510,215 @@
                                 }
                             }
                         },
-                        title: {
-                            display: true,
-                            text: `Total Students: ${data.overall.present + data.overall.absent}`,
-                            font: { size: 16, weight: 'bold' },
-                            color: '#1f2937'
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    return `${label}: ${value}`;
+                                }
+                            }
                         },
                         datalabels: {
                             formatter: (value, context) => {
-                                const total = context.chart.data.datasets[0].data.reduce((sum, current) => sum + current, 0);
-                                const percentage = ((value / total) * 100).toFixed(1) + '%';
-                                return `${value}\n(${percentage})`;
+                                const totalSum = context.chart.data.datasets[0].data.reduce((acc, curr) => acc + curr, 0);
+                                const percentage = totalSum > 0 ? ((value / totalSum) * 100).toFixed(1) + '%' : '0%';
+                                return percentage;
                             },
                             color: '#fff',
                             font: {
                                 weight: 'bold',
-                                size: 14
-                            },
-                            textAlign: 'center'
+                                size: 16
+                            }
                         }
                     }
                 }
             });
         };
 
-        const drawDepartmentAndProgramCharts = (departmentName, data) => {
-            const departmentData = data.departments[departmentName];
-            if (!departmentData) return;
+        const drawDepartmentYearChart = (departmentName, data) => {
+            if (departmentYearChart) {
+                departmentYearChart.destroy();
+            }
 
-            // Destroy previous charts
-            if (departmentYearChart) departmentYearChart.destroy();
-            if (departmentProgramsChart) departmentProgramsChart.destroy();
-            
-            // Update the summary numbers
-            const totalPresent = departmentData.present.reduce((sum, current) => sum + current, 0);
-            const totalAbsent = departmentData.absent.reduce((sum, current) => sum + current, 0);
-            totalPresentSpan.textContent = totalPresent;
-            totalAbsentSpan.textContent = totalAbsent;
+            const presentData = data.present;
+            const absentData = data.absent;
+            const labels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
 
-            const yearLabels = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
-
-            // Draw Department Year Chart
-            const departmentCtx = document.getElementById('departmentYearChart').getContext('2d');
-            departmentYearChart = new Chart(departmentCtx, {
+            const ctx = document.getElementById('departmentYearChart').getContext('2d');
+            departmentYearChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: yearLabels,
+                    labels: labels,
                     datasets: [
                         {
                             label: 'Present',
-                            data: departmentData.present,
-                            backgroundColor: CHART_COLORS[0]
+                            data: presentData,
+                            backgroundColor: YEAR_COLORS,
+                            borderColor: YEAR_COLORS,
+                            borderWidth: 1
                         },
                         {
                             label: 'Absent',
-                            data: departmentData.absent,
-                            backgroundColor: CHART_COLORS[1]
+                            data: absentData,
+                            backgroundColor: '#D1D5DB',
+                            borderColor: '#9CA3AF',
+                            borderWidth: 1
                         }
                     ]
                 },
                 options: {
                     responsive: true,
-                    scales: {
-                        x: { stacked: true },
-                        y: {
-                            stacked: true,
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 25,
-                                callback: function(value) { return value; }
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: `Attendance by Year Level for ${departmentName}`,
+                            font: {
+                                size: 16,
+                                weight: 'bold'
                             }
                         }
                     },
-                    plugins: {
-                        legend: { position: 'top' },
-                        title: {
-                            display: true,
-                            text: `Attendance by Year for ${departmentName}`,
-                            font: { size: 14, weight: 'bold' },
-                            color: '#1f2937'
-                        }
-                    }
-                }
-            });
-
-            // Draw Department Programs Chart (single vertical stacked bar chart)
-            const programLabels = Object.keys(departmentData.programs).sort();
-            const programPresentData = programLabels.map(p => departmentData.programs[p].present.reduce((sum, current) => sum + current, 0));
-            const programAbsentData = programLabels.map(p => departmentData.programs[p].absent.reduce((sum, current) => sum + current, 0));
-            
-            const programsCtx = departmentProgramsChartCanvas.getContext('2d');
-            departmentProgramsChart = new Chart(programsCtx, {
-                type: 'bar',
-                data: {
-                    labels: programLabels,
-                    datasets: [
-                        {
-                            label: 'Present',
-                            data: programPresentData,
-                            backgroundColor: CHART_COLORS[0]
-                        },
-                        {
-                            label: 'Absent',
-                            data: programAbsentData,
-                            backgroundColor: CHART_COLORS[1]
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
                     scales: {
                         x: {
                             stacked: true,
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Number of Students'
-                            }
                         },
                         y: {
                             stacked: true,
-                            grid: { display: false }
-                        }
-                    },
-                    plugins: {
-                        legend: { position: 'top' },
-                        title: {
-                            display: true,
-                            text: `Attendance by Program for ${departmentName}`,
-                            font: { size: 14, weight: 'bold' },
-                            color: '#1f2937'
+                            beginAtZero: true
                         }
                     }
                 }
             });
         };
 
-        // --- UI Population Functions ---
+        const drawDepartmentProgramsChart = (departmentName, programsData) => {
+            if (departmentProgramsChart) {
+                departmentProgramsChart.destroy();
+            }
+
+            const labels = Object.keys(programsData);
+            const presentData = labels.map(program => programsData[program].present.reduce((sum, val) => sum + val, 0));
+            const absentData = labels.map(program => programsData[program].absent.reduce((sum, val) => sum + val, 0));
+
+            const ctx = departmentProgramsChartCanvas.getContext('2d');
+            departmentProgramsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Present',
+                            data: presentData,
+                            backgroundColor: '#3B82F6',
+                            borderColor: '#1D4ED8',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Absent',
+                            data: absentData,
+                            backgroundColor: '#EF4444',
+                            borderColor: '#B91C1C',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: `Attendance by Program for ${departmentName}`,
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            grid: {
+                                display: true
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        // --- UI Functions ---
         const populateDepartmentSlider = (data) => {
             departmentSlider.innerHTML = '';
-            const departments = Object.keys(data.departments).sort();
-            departments.forEach(dept => {
-                const item = document.createElement('span');
+            const departments = Object.keys(data.departments);
+            departments.forEach((dept, index) => {
+                const item = document.createElement('div');
+                item.className = `slider-item ${index === 0 ? 'active' : ''} bg-gray-200 text-gray-700 hover:bg-gray-300`;
                 item.textContent = dept;
-                item.classList.add('slider-item', 'bg-gray-200', 'text-gray-800', 'hover:bg-gray-300');
                 item.dataset.department = dept;
-                item.addEventListener('click', () => handleDepartmentSelect(dept));
+                item.addEventListener('click', () => {
+                    const currentActive = departmentSlider.querySelector('.slider-item.active');
+                    if (currentActive) {
+                        currentActive.classList.remove('active', 'bg-blue-600', 'text-white');
+                        currentActive.classList.add('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+                    }
+                    item.classList.add('active', 'bg-blue-600', 'text-white');
+                    item.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300');
+                    displayDepartmentData(dept);
+                });
                 departmentSlider.appendChild(item);
             });
-            
+            // Display data for the first department by default
             if (departments.length > 0) {
-                handleDepartmentSelect(departments[0]);
+                displayDepartmentData(departments[0]);
             }
         };
 
-        // --- UI Interaction Handlers ---
-        const handleDepartmentSelect = (departmentName) => {
+        const displayDepartmentData = (departmentName) => {
+            const departmentData = aggregatedData.departments[departmentName];
+            if (!departmentData) return;
             
-            // Update active state for department slider
-            document.querySelectorAll('#department-slider .slider-item').forEach(item => {
-                item.classList.remove('active', 'bg-blue-700', 'text-white');
-                item.classList.add('bg-gray-200', 'text-gray-800');
-                if (item.dataset.department === departmentName) {
-                    item.classList.add('active', 'bg-blue-700', 'text-white');
-                }
-            });
+            // Calculate and display summary totals and percentages
+            const totalPresent = departmentData.present.reduce((sum, val) => sum + val, 0);
+            const totalAbsent = departmentData.absent.reduce((sum, val) => sum + val, 0);
+            const totalStudents = totalPresent + totalAbsent;
+            
+            const presentPercentage = totalStudents > 0 ? ((totalPresent / totalStudents) * 100).toFixed(2) + '%' : '0.00%';
+            const absentPercentage = totalStudents > 0 ? ((totalAbsent / totalStudents) * 100).toFixed(2) + '%' : '0.00%';
 
-            // Update charts and summary
-            drawDepartmentAndProgramCharts(departmentName, aggregatedData);
+            totalPresentSpan.textContent = totalPresent;
+            presentPercentageSpan.textContent = `(${presentPercentage})`;
+            totalAbsentSpan.textContent = totalAbsent;
+            absentPercentageSpan.textContent = `(${absentPercentage})`;
+
+            // Draw charts for the selected department
+            drawDepartmentYearChart(departmentName, departmentData);
+            drawDepartmentProgramsChart(departmentName, departmentData.programs);
         };
-        
-        // --- Helper Functions ---
+
         const showModal = (title, message) => {
             modalTitle.textContent = title;
             modalMessage.textContent = message;
             modal.style.display = 'flex';
         };
 
-        // Initialize Firebase on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            setupFirebase();
-        });
+        // --- Initial Call to set up everything ---
+        window.onload = setupFirebase;
     </script>
 </body>
 </html>

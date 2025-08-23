@@ -267,69 +267,66 @@
             // Filter data for the selected department
             const deptData = data.filter(row => row.department === departmentName);
 
-            // Check if there are multiple programs in the department
-            if (deptData.length > 1) {
-                // Calculate overall totals for the department
-                const overallDeptPresent = deptData.reduce((sum, program) => 
-                    sum + program.year1.present + program.year2.present + program.year3.present + program.year4.present, 0);
-                const overallDeptAbsent = deptData.reduce((sum, program) =>
-                    sum + program.year1.absent + program.year2.absent + program.year3.absent + program.year4.absent, 0);
+            // Calculate overall totals for the department
+            const overallDeptPresent = deptData.reduce((sum, program) => 
+                sum + program.year1.present + program.year2.present + program.year3.present + program.year4.present, 0);
+            const overallDeptAbsent = deptData.reduce((sum, program) =>
+                sum + program.year1.absent + program.year2.absent + program.year3.absent + program.year4.absent, 0);
 
-                // Create and render the overall department chart
-                const overallDeptChartDiv = document.createElement('div');
-                overallDeptChartDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md mb-6';
-                overallDeptChartDiv.innerHTML = `
-                    <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Overall Attendance for ${departmentName}</h3>
-                    <div class="chart-container">
-                        <canvas id="overall-dept-chart"></canvas>
-                    </div>
-                `;
-                departmentProgramBarChartsContainer.appendChild(overallDeptChartDiv);
+            // Create and render the overall department chart (no longer conditional)
+            const overallDeptChartDiv = document.createElement('div');
+            overallDeptChartDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md mb-6';
+            overallDeptChartDiv.innerHTML = `
+                <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Overall Attendance for ${departmentName}</h3>
+                <div class="chart-container">
+                    <canvas id="overall-dept-chart"></canvas>
+                </div>
+            `;
+            departmentProgramBarChartsContainer.appendChild(overallDeptChartDiv);
 
-                const overallDeptCanvas = document.getElementById('overall-dept-chart');
-                const newChart = new Chart(overallDeptCanvas, {
-                    type: 'bar',
-                    data: {
-                        labels: ['Present', 'Absent'],
-                        datasets: [{
-                            label: 'Total Students',
-                            data: [overallDeptPresent, overallDeptAbsent],
-                            backgroundColor: ['#2563eb', '#dc2626'],
-                            borderColor: ['#1e40af', '#b91c1c'],
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: 'Number of Students'
-                                }
+            const overallDeptCanvas = document.getElementById('overall-dept-chart');
+            const newChart = new Chart(overallDeptCanvas, {
+                type: 'bar',
+                data: {
+                    labels: ['Present', 'Absent'],
+                    datasets: [{
+                        label: 'Total Students',
+                        data: [overallDeptPresent, overallDeptAbsent],
+                        backgroundColor: ['#2563eb', '#dc2626'],
+                        borderColor: ['#1e40af', '#b91c1c'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Students'
                             }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
                         },
-                        plugins: {
-                            legend: {
-                                display: false
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        const value = context.raw;
-                                        const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
-                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
-                                        return ` ${context.label}: ${value} (${percentage}%)`;
-                                    }
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
+                                    return ` ${context.label}: ${value} (${percentage}%)`;
                                 }
                             }
                         }
                     }
-                });
-                currentDepartmentCharts.push(newChart);
-            }
+                }
+            });
+            currentDepartmentCharts.push(newChart);
             
             // Render individual charts for each program, broken down by year
             deptData.forEach(program => {
@@ -347,7 +344,7 @@
                 departmentProgramBarChartsContainer.appendChild(programChartDiv);
 
                 const canvas = programChartDiv.querySelector('canvas');
-                const newChart = new Chart(canvas, {
+                const newChartYear = new Chart(canvas, {
                     type: 'bar',
                     data: {
                         labels: ['1st Year', '2nd Year', '3rd Year', '4th Year'],
@@ -429,7 +426,7 @@
                         }
                     }
                 });
-                currentDepartmentCharts.push(newChart);
+                currentDepartmentCharts.push(newChartYear);
             });
         };
         

@@ -103,11 +103,22 @@
                 </div>
             </div>
 
-            <!-- Department and Program Combined Bar Charts Container -->
+            <!-- Department Slider and Charts Container -->
             <div class="my-8">
                 <h3 class="text-xl md:text-2xl font-bold text-gray-700 mb-4 text-center">Department and Program Details</h3>
-                <div id="department-program-bar-charts-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full h-auto">
-                    <p id="charts-placeholder" class="text-gray-500 text-center col-span-full">Charts will appear here after data is loaded.</p>
+                
+                <!-- Department Slider -->
+                <div class="flex flex-col items-center mb-6">
+                    <label for="department-slider" class="block text-lg font-medium text-gray-700 mb-2">Select a Department:</label>
+                    <div class="w-full max-w-xl flex items-center justify-between gap-4">
+                        <input type="range" id="department-slider" min="0" max="0" step="1" value="0" class="w-full">
+                        <span id="department-name" class="text-base font-medium text-gray-800 min-w-[150px] text-right">Loading...</span>
+                    </div>
+                </div>
+
+                <div id="department-program-bar-charts-container" class="grid grid-cols-1 gap-6 w-full h-auto">
+                    <!-- The selected department's chart will be rendered here -->
+                    <p id="charts-placeholder" class="text-gray-500 text-center col-span-full">Please select a department to view details.</p>
                 </div>
             </div>
         </div>
@@ -125,10 +136,13 @@
         const statusMessage = document.getElementById('status-message');
         const departmentProgramBarChartsContainer = document.getElementById('department-program-bar-charts-container');
         const chartsPlaceholder = document.getElementById('charts-placeholder');
+        const departmentSlider = document.getElementById('department-slider');
+        const departmentNameSpan = document.getElementById('department-name');
 
         let studentData = [];
-        let chartInstances = {}; // Object to store all chart instances
+        let departments = []; // Store the list of departments
         let overallBarChartInstance = null; // Instance for the overall bar chart
+        let currentDepartmentChart = null; // Store the single chart instance for the slider view
 
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
@@ -191,8 +205,8 @@
                         if (studentData.length > 0) {
                             statusMessage.textContent = "Data retrieved successfully!";
                             statusMessage.style.color = '#10b981';
-                            renderDepartmentProgramCharts(studentData);
                             renderOverallBarChart(studentData);
+                            initializeDepartmentSlider(studentData);
                         } else {
                             statusMessage.textContent = "No student data found in the cloud.";
                             statusMessage.style.color = '#dc2626';
@@ -214,74 +228,71 @@
             });
         };
         
-        // --- Render Department and Program Combined Bar Charts ---
-        const renderDepartmentProgramCharts = (data) => {
-            chartsPlaceholder.classList.add('hidden');
-            departmentProgramBarChartsContainer.innerHTML = ''; // Clear previous charts
+        // --- Initialize the Department Slider ---
+        const initializeDepartmentSlider = (data) => {
+            departments = [...new Set(data.map(row => row.department))].sort();
+            
+            // Set slider properties based on the number of departments
+            departmentSlider.max = departments.length > 0 ? departments.length - 1 : 0;
+            departmentSlider.value = 0; // Start at the first department
+            
+            // Initial render based on the first department
+            if (departments.length > 0) {
+                const initialDepartment = departments[departmentSlider.value];
+                departmentNameSpan.textContent = initialDepartment;
+                renderDepartmentProgramCharts(data, initialDepartment);
+                chartsPlaceholder.classList.add('hidden');
+            } else {
+                departmentNameSpan.textContent = "No departments found";
+                departmentProgramBarChartsContainer.innerHTML = '';
+                chartsPlaceholder.classList.remove('hidden');
+            }
 
-            // Group data by department
-            const groupedByDepartment = data.reduce((acc, row) => {
-                if (!acc[row.department]) {
-                    acc[row.department] = { programs: [] };
-                }
-                const totalPresent = row.year1.present + row.year2.present + row.year3.present + row.year4.present;
-                const totalAbsent = row.year1.absent + row.year2.absent + row.year3.absent + row.year4.absent;
-                acc[row.department].programs.push({
-                    name: row.program,
-                    present: totalPresent,
-                    absent: totalAbsent
-                });
-                return acc;
-            }, {});
+            // Add event listener to handle slider changes
+            departmentSlider.addEventListener('input', (event) => {
+                const selectedIndex = parseInt(event.target.value);
+                const selectedDepartment = departments[selectedIndex];
+                departmentNameSpan.textContent = selectedDepartment;
+                renderDepartmentProgramCharts(data, selectedDepartment);
+            });
+        };
 
-            Object.keys(groupedByDepartment).forEach(departmentName => {
-                const deptData = groupedByDepartment[departmentName];
-                
-                // Prepare labels and data for the stacked bar chart
-                const programLabels = [];
-                const presentData = [];
-                const absentData = [];
+        // --- Render a single Department's Program Bar Chart AND overall bar chart if needed ---
+        const renderDepartmentProgramCharts = (data, departmentName) => {
+            departmentProgramBarChartsContainer.innerHTML = ''; // Clear previous chart
 
-                deptData.programs.forEach(program => {
-                    programLabels.push(program.name);
-                    presentData.push(program.present);
-                    absentData.push(program.absent);
-                });
+            // Filter data for the selected department
+            const deptData = data.filter(row => row.department === departmentName);
 
-                // Create the bar chart div and canvas
-                const deptChartDiv = document.createElement('div');
-                deptChartDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md';
-                const chartContainer = document.createElement('div');
-                chartContainer.className = 'chart-container';
-                const canvas = document.createElement('canvas');
-                const canvasId = `dept-chart-${departmentName.replace(/[^a-zA-Z0-9]/g, '')}`;
-                canvas.id = canvasId;
-                
-                chartContainer.appendChild(canvas);
-                deptChartDiv.appendChild(chartContainer);
-                departmentProgramBarChartsContainer.appendChild(deptChartDiv);
+            // Check if there are multiple programs in the department
+            if (deptData.length > 1) {
+                // Calculate overall totals for the department
+                const overallDeptPresent = deptData.reduce((sum, program) => 
+                    sum + program.year1.present + program.year2.present + program.year3.present + program.year4.present, 0);
+                const overallDeptAbsent = deptData.reduce((sum, program) =>
+                    sum + program.year1.absent + program.year2.absent + program.year3.absent + program.year4.absent, 0);
 
-                // Destroy any existing chart instance on this canvas
-                if (chartInstances[canvasId]) {
-                    chartInstances[canvasId].destroy();
-                }
+                // Create and render the overall department chart
+                const overallDeptChartDiv = document.createElement('div');
+                overallDeptChartDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md mb-6';
+                overallDeptChartDiv.innerHTML = `
+                    <h3 class="font-semibold text-center text-lg mb-2 text-gray-700">Overall Attendance for ${departmentName}</h3>
+                    <div class="chart-container">
+                        <canvas id="overall-dept-chart"></canvas>
+                    </div>
+                `;
+                departmentProgramBarChartsContainer.appendChild(overallDeptChartDiv);
 
-                // Create the new chart instance
-                const chart = new Chart(canvas, {
+                const overallDeptCanvas = document.getElementById('overall-dept-chart');
+                new Chart(overallDeptCanvas, {
                     type: 'bar',
                     data: {
-                        labels: programLabels,
+                        labels: ['Present', 'Absent'],
                         datasets: [{
-                            label: 'Present',
-                            data: presentData,
-                            backgroundColor: '#2563eb',
-                            borderColor: '#1e40af',
-                            borderWidth: 1
-                        }, {
-                            label: 'Absent',
-                            data: absentData,
-                            backgroundColor: '#dc2626',
-                            borderColor: '#b91c1c',
+                            label: 'Total Students',
+                            data: [overallDeptPresent, overallDeptAbsent],
+                            backgroundColor: ['#2563eb', '#dc2626'],
+                            borderColor: ['#1e40af', '#b91c1c'],
                             borderWidth: 1
                         }]
                     },
@@ -289,67 +300,146 @@
                         responsive: true,
                         maintainAspectRatio: false,
                         scales: {
-                            x: {
-                                stacked: false,
-                                grid: {
-                                    display: false
-                                },
-                                title: {
-                                    display: true,
-                                    text: 'Programs',
-                                    font: {
-                                        size: 14,
-                                        weight: 'bold'
-                                    }
-                                }
-                            },
                             y: {
-                                stacked: false,
                                 beginAtZero: true,
                                 title: {
                                     display: true,
-                                    text: 'Number of Students',
-                                    font: {
-                                        size: 14,
-                                        weight: 'bold'
-                                    }
+                                    text: 'Number of Students'
                                 }
                             }
                         },
                         plugins: {
                             legend: {
-                                position: 'top',
-                                labels: {
-                                    font: {
-                                        size: 14
-                                    }
-                                }
-                            },
-                            title: {
-                                display: true,
-                                text: `${departmentName} Attendance by Program`,
-                                font: {
-                                    size: 18,
-                                    weight: 'bold'
-                                }
+                                display: false
                             },
                             tooltip: {
                                 callbacks: {
                                     label: function(context) {
                                         const value = context.raw;
-                                        const datasetIndex = context.datasetIndex;
-                                        const dataset = context.chart.data.datasets[datasetIndex];
-                                        const otherDataset = context.chart.data.datasets[1 - datasetIndex];
-                                        const total = value + otherDataset.data[context.dataIndex];
+                                        const total = context.dataset.data.reduce((acc, curr) => acc + curr, 0);
                                         const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
-                                        return ` ${context.dataset.label}: ${value} (${percentage}%)`;
+                                        return ` ${context.label}: ${value} (${percentage}%)`;
                                     }
                                 }
                             }
                         }
                     }
                 });
-                chartInstances[canvasId] = chart;
+            }
+
+            // Prepare labels and data for the per-program bar chart
+            const programLabels = [];
+            const presentData = [];
+            const absentData = [];
+
+            deptData.forEach(program => {
+                const totalPresent = program.year1.present + program.year2.present + program.year3.present + program.year4.present;
+                const totalAbsent = program.year1.absent + program.year2.absent + program.year3.absent + program.year4.absent;
+                programLabels.push(program.program);
+                presentData.push(totalPresent);
+                absentData.push(totalAbsent);
+            });
+
+            // Create the per-program bar chart div and canvas
+            const chartDiv = document.createElement('div');
+            chartDiv.className = 'p-4 bg-white bg-opacity-90 rounded-lg shadow-md';
+            const chartContainer = document.createElement('div');
+            chartContainer.className = 'chart-container';
+            const canvas = document.createElement('canvas');
+            const canvasId = `dept-chart-${departmentName.replace(/[^a-zA-Z0-9]/g, '')}`;
+            canvas.id = canvasId;
+            
+            chartContainer.appendChild(canvas);
+            chartDiv.appendChild(chartContainer);
+            departmentProgramBarChartsContainer.appendChild(chartDiv);
+
+            // Destroy any existing chart instance on this canvas
+            if (currentDepartmentChart) {
+                currentDepartmentChart.destroy();
+            }
+
+            // Create the new chart instance
+            currentDepartmentChart = new Chart(canvas, {
+                type: 'bar',
+                data: {
+                    labels: programLabels,
+                    datasets: [{
+                        label: 'Present',
+                        data: presentData,
+                        backgroundColor: '#2563eb',
+                        borderColor: '#1e40af',
+                        borderWidth: 1
+                    }, {
+                        label: 'Absent',
+                        data: absentData,
+                        backgroundColor: '#dc2626',
+                        borderColor: '#b91c1c',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: false,
+                            grid: {
+                                display: false
+                            },
+                            title: {
+                                display: true,
+                                text: 'Programs',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        y: {
+                            stacked: false,
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Students',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: `Attendance by Program for ${departmentName}`,
+                            font: {
+                                size: 18,
+                                weight: 'bold'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const datasetIndex = context.datasetIndex;
+                                    const dataset = context.chart.data.datasets[datasetIndex];
+                                    const otherDataset = context.chart.data.datasets[1 - datasetIndex];
+                                    const total = value + otherDataset.data[context.dataIndex];
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(2) : 0;
+                                    return ` ${context.dataset.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
             });
         };
         

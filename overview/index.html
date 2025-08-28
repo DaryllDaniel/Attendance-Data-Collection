@@ -5,26 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Event Calendar Uploader</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Expose Firebase services to the global scope
-        window.firebase = {
-            initializeApp,
-            getAuth,
-            signInAnonymously,
-            getFirestore,
-            doc,
-            setDoc
-        };
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
     </script>
+    <!-- Corrected Firebase SDK imports to use the global 'firebase' namespace -->
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f3f4f6;
-            background-image: url('https://scontent.fcrk1-1.fna.fbcdn.net/v/t39.30808-6/534829113_1219906786818614_3623306942044619088_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=833d8c&_nc_ohc=IVr9Yr1-pvUQkNvwFa9iO5&_nc_oc=AdntxIkfqY4bkAXBlJJlzddtb7L6hdtB7b9Szq2OuBkDf7fySj9CgdnctopvIdlkE_aA&_nc_zt=23&_nc_ht=scontent.fcrk1-1.fna&_nc_gid=wsNnun-HKCpyMJFkIDXHpA&oh=00_AfUlrYAo7YO63AptckNh1w5AiCyZbvdvxxE5l_uo6vsQw&oe=68AF8B73');
+            background-image: url('https://placehold.co/1920x1080/4F46E5/FFFFFF?text=Event+Calendar');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -38,7 +38,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 255, 0.3);
+            background-color: rgba(79, 70, 229, 0.3); /* a nice blue-purple overlay */
             z-index: 1;
         }
 
@@ -92,14 +92,15 @@
     </style>
 </head>
 <body class="flex flex-col items-center min-h-screen p-4">
-    <img id="top-left-logo" src="https://scontent.fcrk1-4.fna.fbcdn.net/v/t39.30808-6/537430317_122096293532993050_6396531567539471614_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=6ee11a&_nc_ohc=WSX_ci11nyQQ7kNvwEt-pXT&_nc_oc=Adn4_s5UW7ucupcP6SwXVA6JsI0fFG59JlUg4Fl-oZixJ3AvkBxrOUTP9DBFT9lC0dY&_nc_zt=23&_nc_ht=scontent.fcrk1-4.fna&_nc_gid=KnzKC5VvxRFOiRXB42TeGA&oh=00_AfWzidd9JfjRRoaZAQigWK_JOqp-X-Ccys0BnucXvXIPaQ&oe=68AFA576" alt="Logo">
+    <img id="top-left-logo" src="https://placehold.co/100x100/A5B4FC/FFFFFF?text=Logo" alt="Logo">
 
     <div class="text-center mb-8 px-4 z-20">
         <h1 class="text-3xl md:text-4xl font-extrabold text-white mb-2 drop-shadow-lg">Event Data Uploader</h1>
-        <p class="text-gray-200 drop-shadow-md">Upload student data to the cloud.</p>
+        <p class="text-gray-200 drop-shadow-md">Upload and manage student data.</p>
     </div>
 
     <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col gap-8 z-20">
+        <!-- Upload Section -->
         <div class="flex-1">
             <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Upload CSV Data</h2>
             <div class="flex flex-col md:flex-row items-center justify-center gap-4 mb-6">
@@ -117,77 +118,145 @@
         <div id="status-message" class="text-center p-4 text-gray-500 font-medium bg-gray-100 rounded-lg hidden">
             Awaiting file selection...
         </div>
+
+        <!-- Events List Section -->
+        <div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Manage Events</h2>
+            <div id="events-list-container" class="space-y-4">
+                <!-- Events will be dynamically added here -->
+            </div>
+        </div>
     </div>
 
-    <!-- The custom modal for alerts -->
+    <!-- The custom modal for alerts and confirmations -->
     <div id="custom-modal" class="modal">
         <div class="modal-content">
             <h3 id="modal-title" class="text-xl font-bold mb-2"></h3>
             <p id="modal-message" class="text-gray-700 mb-4"></p>
-            <div class="modal-buttons">
-                <button id="modal-ok-button" class="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-all duration-200">OK</button>
+            <div id="modal-buttons" class="modal-buttons">
+                <!-- Buttons will be added dynamically -->
             </div>
         </div>
     </div>
     
-    <script type="module">
+    <script>
         // --- Firebase Service Instances ---
         let db;
         let auth;
-        const EVENTS_COLLECTION_NAME = "event_attendance_tracker";
-        const FIREBASE_PROJECT_ID = "event-calendar-prototype-b11b6";
+        let userId = null; // Store the user ID after authentication
 
-        // This is the new public data path that everyone can access after authentication.
-        const PUBLIC_DATA_PATH = `artifacts/${FIREBASE_PROJECT_ID}/public/data/${EVENTS_COLLECTION_NAME}`;
+        // These global variables are provided by the canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        const EVENTS_COLLECTION_NAME = "event_attendance_tracker";
+        const PUBLIC_DATA_PATH = `artifacts/${appId}/public/data/${EVENTS_COLLECTION_NAME}`;
 
         // --- DOM Element References ---
         const eventNameInput = document.getElementById('event-name-input');
         const fileInput = document.getElementById('file-input');
         const uploadButton = document.getElementById('upload-button');
         const statusMessage = document.getElementById('status-message');
+        const eventsListContainer = document.getElementById('events-list-container');
         const modal = document.getElementById('custom-modal');
         const modalTitle = document.getElementById('modal-title');
         const modalMessage = document.getElementById('modal-message');
-        const modalOkButton = document.getElementById('modal-ok-button');
-
-        // --- Event Listeners ---
-        uploadButton.addEventListener('click', () => uploadData());
-        modalOkButton.addEventListener('click', () => {
-            modal.style.display = 'none';
-        });
+        const modalButtonsContainer = document.getElementById('modal-buttons');
 
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
             try {
-                // Use the Firebase configuration provided by the user.
-                const firebaseConfig = {
-                    apiKey: "AIzaSyDCRT5OxfwUD25pS6igy8v3xYlaGmMXK_0",
-                    authDomain: "event-calendar-prototype-b11b6.firebaseapp.com",
-                    projectId: "event-calendar-prototype-b11b6",
-                    storageBucket: "event-calendar-prototype-b11b6.firebasestorage.app",
-                    messagingSenderId: "532386656284",
-                    appId: "1:532386656284:web:fd4533fb0f54b198752fd9",
-                    measurementId: "G-J10NDCD212"
-                };
+                if (!firebaseConfig) {
+                    throw new Error("Firebase config is not available.");
+                }
 
-                const app = window.firebase.initializeApp(firebaseConfig);
-                auth = window.firebase.getAuth(app);
-                db = window.firebase.getFirestore(app);
+                // Initialize Firebase app and services
+                const app = firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                db = firebase.firestore();
 
-                // Sign in anonymously. This is required to access the public collection.
-                await window.firebase.signInAnonymously(auth);
+                // Use the provided custom auth token for seamless sign-in
+                if (initialAuthToken) {
+                    await auth.signInWithCustomToken(initialAuthToken);
+                } else {
+                    await auth.signInAnonymously();
+                }
 
-                statusMessage.textContent = "Connected to the cloud. Ready to upload.";
-                statusMessage.classList.remove('hidden');
-                statusMessage.classList.add('bg-gray-100', 'text-gray-500');
+                // Listen for authentication state changes to get the user ID
+                auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        userId = user.uid;
+                        statusMessage.textContent = "Connected to the cloud. Ready to upload.";
+                        statusMessage.classList.remove('hidden');
+                        statusMessage.classList.add('bg-gray-100', 'text-gray-500');
+                        // Start listening for real-time updates to the events list
+                        subscribeToEvents();
+                    } else {
+                        // Handle signed-out state if necessary
+                        console.log("User is signed out.");
+                        statusMessage.textContent = "Signed out. Reconnecting...";
+                        statusMessage.classList.remove('hidden');
+                        statusMessage.classList.add('bg-gray-100', 'text-gray-500');
+                    }
+                });
             } catch (error) {
                 console.error("Firebase setup failed:", error);
-                showModal("Setup Error", `Error setting up cloud connection: ${error.message}`);
+                showModal("Setup Error", `Error setting up cloud connection: ${error.message}`, [{ text: "OK", action: () => {}}]);
                 statusMessage.textContent = "Error setting up cloud connection. Please try again later.";
                 statusMessage.classList.remove('hidden');
                 statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
                 statusMessage.classList.add('text-red-600', 'bg-red-100');
             }
+        };
+
+        // --- Subscribe to Events for Real-time Updates ---
+        const subscribeToEvents = () => {
+            const q = db.collection(PUBLIC_DATA_PATH);
+            q.onSnapshot((snapshot) => {
+                const events = [];
+                snapshot.forEach((doc) => {
+                    // Extract data and document ID
+                    events.push({ id: doc.id, ...doc.data() });
+                });
+                renderEventsList(events);
+            }, (error) => {
+                console.error("Error subscribing to events: ", error);
+                showModal("Data Error", `Failed to load events: ${error.message}`, [{ text: "OK", action: () => {} }]);
+            });
+        };
+
+        // --- Render Events List ---
+        const renderEventsList = (events) => {
+            eventsListContainer.innerHTML = ''; // Clear previous list
+            if (events.length === 0) {
+                eventsListContainer.innerHTML = '<p class="text-center text-gray-500 italic">No events uploaded yet.</p>';
+                return;
+            }
+
+            events.forEach(event => {
+                const eventCard = document.createElement('div');
+                eventCard.className = 'flex justify-between items-center p-4 bg-gray-100 rounded-lg shadow-md';
+                
+                const eventName = document.createElement('span');
+                eventName.className = 'font-semibold text-gray-800 break-all';
+                eventName.textContent = event.id; // The event name is the document ID
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'px-4 py-2 bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition-all duration-200 transform hover:scale-105 ml-4';
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = () => {
+                    // Show a confirmation modal before deleting
+                    showModal("Confirm Deletion", `Are you sure you want to delete the event "${event.id}"? This cannot be undone.`, [
+                        { text: "Cancel", action: () => {} },
+                        { text: "Delete", action: () => deleteEvent(event.id), style: "bg-red-600 hover:bg-red-700" }
+                    ]);
+                };
+
+                eventCard.appendChild(eventName);
+                eventCard.appendChild(deleteButton);
+                eventsListContainer.appendChild(eventCard);
+            });
         };
 
         // --- Data Upload Function ---
@@ -196,11 +265,11 @@
             const file = fileInput.files[0];
 
             if (!eventName) {
-                showModal("Validation Error", "Please enter an event name.");
+                showModal("Validation Error", "Please enter an event name.", [{ text: "OK", action: () => {} }]);
                 return;
             }
             if (!file) {
-                showModal("Validation Error", "Please select a CSV file to upload.");
+                showModal("Validation Error", "Please select a CSV file to upload.", [{ text: "OK", action: () => {} }]);
                 return;
             }
 
@@ -215,16 +284,15 @@
                     const parsedData = parseCsv(csvText);
                     
                     if (parsedData.length === 0) {
-                        showModal("Upload Error", "The CSV file is empty.");
+                        showModal("Upload Error", "The CSV file is empty.", [{ text: "OK", action: () => {} }]);
                         statusMessage.textContent = "Upload failed!";
                         return;
                     }
 
-                    // Now we save to the new public path
-                    const docRef = window.firebase.doc(db, PUBLIC_DATA_PATH, eventName);
+                    const docRef = db.collection(PUBLIC_DATA_PATH).doc(eventName);
                     
-                    await window.firebase.setDoc(docRef, {
-                        data: JSON.stringify(parsedData)
+                    await docRef.set({
+                        data: JSON.stringify(parsedData) // Store as a JSON string
                     });
 
                     statusMessage.textContent = "Upload successful! Data is now available to be viewed.";
@@ -234,14 +302,36 @@
                     fileInput.value = '';
                 };
                 reader.onerror = () => {
-                    showModal("File Read Error", "Failed to read the file.");
+                    showModal("File Read Error", "Failed to read the file.", [{ text: "OK", action: () => {} }]);
                     statusMessage.textContent = "Upload failed!";
                 };
                 reader.readAsText(file);
             } catch (e) {
                 console.error("Error during upload: ", e);
-                showModal("Upload Failed", `An error occurred: ${e.message}`);
+                showModal("Upload Failed", `An error occurred: ${e.message}`, [{ text: "OK", action: () => {} }]);
                 statusMessage.textContent = "Upload failed!";
+                statusMessage.classList.remove('bg-gray-100', 'text-gray-500');
+                statusMessage.classList.add('bg-red-100', 'text-red-600');
+            }
+        };
+
+        // --- Delete Event Function ---
+        const deleteEvent = async (eventId) => {
+            try {
+                statusMessage.textContent = `Deleting event "${eventId}"...`;
+                statusMessage.classList.remove('hidden', 'bg-green-100', 'bg-red-100');
+                statusMessage.classList.add('bg-gray-100', 'text-gray-500');
+
+                const docRef = db.collection(PUBLIC_DATA_PATH).doc(eventId);
+                await docRef.delete();
+
+                statusMessage.textContent = `Event "${eventId}" successfully deleted!`;
+                statusMessage.classList.remove('bg-gray-100', 'text-gray-500');
+                statusMessage.classList.add('bg-green-100', 'text-green-600');
+            } catch (error) {
+                console.error("Error deleting document: ", error);
+                showModal("Deletion Failed", `Failed to delete event: ${error.message}`, [{ text: "OK", action: () => {} }]);
+                statusMessage.textContent = "Deletion failed!";
                 statusMessage.classList.remove('bg-gray-100', 'text-gray-500');
                 statusMessage.classList.add('bg-red-100', 'text-red-600');
             }
@@ -254,16 +344,37 @@
         };
 
         // --- Custom Modal Function ---
-        const showModal = (title, message) => {
+        const showModal = (title, message, buttons) => {
             modalTitle.textContent = title;
             modalMessage.textContent = message;
+            modalButtonsContainer.innerHTML = '';
+            
+            buttons.forEach(btn => {
+                const buttonElement = document.createElement('button');
+                buttonElement.textContent = btn.text;
+                buttonElement.className = `px-6 py-2 rounded-md transition-all duration-200 ${btn.style || "bg-blue-500 text-white hover:bg-blue-600"}`;
+                buttonElement.onclick = () => {
+                    btn.action(); // Execute the button's action
+                    modal.style.display = 'none'; // Close the modal
+                };
+                modalButtonsContainer.appendChild(buttonElement);
+            });
+            
             modal.style.display = 'flex';
         };
 
+        // --- Event Listeners ---
+        uploadButton.addEventListener('click', () => uploadData());
+
         // Initialize Firebase on page load
-        document.addEventListener('DOMContentLoaded', () => {
+        window.onload = () => {
+            if (typeof firebase === 'undefined' || typeof firebase.initializeApp === 'undefined') {
+                showModal("Error", "Firebase SDKs are not loaded correctly. Please check the internet connection.", [{ text: "OK", action: () => {}}]);
+                return;
+            }
             setupFirebase();
-        });
+        };
     </script>
 </body>
 </html>
+

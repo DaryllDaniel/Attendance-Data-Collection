@@ -145,9 +145,19 @@
         let auth;
         let userId = null; // Store the user ID after authentication
 
+        // The provided firebase configuration object
+        const firebaseConfig = {
+            apiKey: "AIzaSyDCRT5OxfwUD25pS6igy8v3xYlaGmMXK_0",
+            authDomain: "event-calendar-prototype-b11b6.firebaseapp.com",
+            projectId: "event-calendar-prototype-b11b6",
+            storageBucket: "event-calendar-prototype-b11b6.firebasestorage.app",
+            messagingSenderId: "532386656284",
+            appId: "1:532386656284:web:fd4533fb0f54b198752fd9",
+            measurementId: "G-J10NDCD212"
+        };
+        
         // These global variables are provided by the canvas environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         const EVENTS_COLLECTION_NAME = "event_attendance_tracker";
@@ -176,13 +186,9 @@
                 auth = firebase.auth();
                 db = firebase.firestore();
 
-                // Use the provided custom auth token for seamless sign-in
-                if (initialAuthToken) {
-                    await auth.signInWithCustomToken(initialAuthToken);
-                } else {
-                    await auth.signInAnonymously();
-                }
-
+                // Sign in anonymously to avoid the custom token mismatch error
+                await auth.signInAnonymously();
+                
                 // Listen for authentication state changes to get the user ID
                 auth.onAuthStateChanged((user) => {
                     if (user) {
@@ -377,4 +383,3 @@
     </script>
 </body>
 </html>
-

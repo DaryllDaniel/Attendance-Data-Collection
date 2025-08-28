@@ -100,11 +100,11 @@
     </div>
 
     <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col gap-8 z-20">
-        <!-- The connection status section is now hidden but the content is still updated for debugging purposes -->
-        <div class="flex-1 p-4 bg-gray-100 rounded-lg hidden">
+        <!-- The connection status section is now visible to help with debugging -->
+        <div class="flex-1 p-4 bg-gray-100 rounded-lg">
             <h2 class="text-lg font-bold text-gray-800 mb-2">Connection Status</h2>
             <p class="text-sm text-gray-700"><strong>User ID:</strong> <span id="user-id-display" class="font-mono break-all"></span></p>
-            <p class="text-sm text-gray-700"><strong>Cloud Path:</strong> <span id="cloud-path-display" class="font-mono break-all"></span></p>
+            <p class="text-sm text-gray-700"><strong>Active Cloud Path:</strong> <span id="cloud-path-display" class="font-mono break-all"></span></p>
         </div>
         
         <!-- Upload Section -->
@@ -129,6 +129,12 @@
         <!-- Events List Section -->
         <div>
             <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Manage Events</h2>
+            <div class="flex justify-center items-center mb-4">
+                <label for="path-selector" class="mr-2 text-gray-700">View events from:</label>
+                <select id="path-selector" class="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <!-- Options will be added dynamically by JavaScript -->
+                </select>
+            </div>
             <div id="events-list-container" class="space-y-4">
                 <!-- Events will be dynamically added here -->
             </div>
@@ -151,6 +157,7 @@
         let db;
         let auth;
         let userId = null; // Store the user ID after authentication
+        let unsubscribeListener = null; // Variable to store the unsubscribe function for the listener
 
         // The provided firebase configuration object
         const firebaseConfig = {
@@ -166,9 +173,13 @@
         // These global variables are provided by the canvas environment
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
+        
+        // Define the two possible cloud paths
+        const NEW_USER_PATH_PREFIX = `artifacts/${appId}/users/`;
+        // This is the new path provided by the user
+        const USER_PROVIDED_PUBLIC_PATH = `artifacts/${appId}/public/data/event_attendance_tracker`;
         const EVENTS_COLLECTION_NAME = "event_attendance_tracker";
-        const PUBLIC_DATA_PATH = ``artifacts/${FIREBASE_PROJECT_ID}/public/data/${EVENTS_COLLECTION_NAME}`;
+        let activeCloudPath = null; // This will be set after authentication
 
         // --- DOM Element References ---
         const eventNameInput = document.getElementById('event-name-input');
@@ -182,6 +193,7 @@
         const modalButtonsContainer = document.getElementById('modal-buttons');
         const userIdDisplay = document.getElementById('user-id-display');
         const cloudPathDisplay = document.getElementById('cloud-path-display');
+        const pathSelector = document.getElementById('path-selector');
 
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
@@ -195,28 +207,40 @@
                 auth = firebase.auth();
                 db = firebase.firestore();
 
-                // Sign in anonymously to avoid the custom token mismatch error
-                await auth.signInAnonymously();
-                
                 // Listen for authentication state changes to get the user ID
                 auth.onAuthStateChanged((user) => {
                     if (user) {
                         userId = user.uid;
                         userIdDisplay.textContent = userId; // Display the user ID
-                        cloudPathDisplay.textContent = PUBLIC_DATA_PATH; // Display the cloud path
+
+                        // Populate the path selector dropdown
+                        const newUserPath = `${NEW_USER_PATH_PREFIX}${userId}/${EVENTS_COLLECTION_NAME}`;
+                        pathSelector.innerHTML = `
+                            <option value="${newUserPath}">My Private Events</option>
+                            <option value="${USER_PROVIDED_PUBLIC_PATH}">Shared Public Events</option>
+                        `;
+
+                        // Set the initial path and start listening
+                        activeCloudPath = newUserPath;
+                        cloudPathDisplay.textContent = activeCloudPath;
                         statusMessage.textContent = "Connected to the cloud. Ready to upload.";
                         statusMessage.classList.remove('hidden');
                         statusMessage.classList.add('bg-gray-100', 'text-gray-500');
-                        // Start listening for real-time updates to the events list
                         subscribeToEvents();
+
+                        // Add event listener for the path selector
+                        pathSelector.addEventListener('change', (e) => {
+                            activeCloudPath = e.target.value;
+                            cloudPathDisplay.textContent = activeCloudPath;
+                            subscribeToEvents(); // Re-subscribe to the new path
+                        });
+
                     } else {
-                        // Handle signed-out state if necessary
-                        console.log("User is signed out.");
-                        userIdDisplay.textContent = "Not authenticated";
-                        cloudPathDisplay.textContent = "Not connected";
-                        statusMessage.textContent = "Signed out. Reconnecting...";
-                        statusMessage.classList.remove('hidden');
-                        statusMessage.classList.add('bg-gray-100', 'text-gray-500');
+                        // Sign in anonymously to get a user ID
+                        auth.signInAnonymously().catch(error => {
+                            console.error("Anonymous sign-in failed:", error);
+                            showModal("Authentication Error", `Failed to sign in anonymously: ${error.message}`, [{ text: "OK", action: () => {} }]);
+                        });
                     }
                 });
             } catch (error) {
@@ -231,18 +255,30 @@
 
         // --- Subscribe to Events for Real-time Updates ---
         const subscribeToEvents = () => {
-            console.log(`Subscribing to Firestore path: ${PUBLIC_DATA_PATH}`);
-            const q = db.collection(PUBLIC_DATA_PATH);
-            q.onSnapshot((snapshot) => {
+            if (unsubscribeListener) {
+                unsubscribeListener(); // Unsubscribe from the old listener
+            }
+
+            if (!activeCloudPath || !db) {
+                console.error("Cannot subscribe to events. Cloud path or database not initialized.");
+                return;
+            }
+
+            console.log(`Subscribing to Firestore path: ${activeCloudPath}`);
+            const q = db.collection(activeCloudPath);
+            unsubscribeListener = q.onSnapshot((snapshot) => {
                 const events = [];
                 snapshot.forEach((doc) => {
-                    // Extract data and document ID
                     events.push({ id: doc.id, ...doc.data() });
                 });
                 renderEventsList(events);
             }, (error) => {
                 console.error("Error subscribing to events: ", error);
-                showModal("Data Error", `Failed to load events: ${error.message}`, [{ text: "OK", action: () => {} }]);
+                // The public path might have permission issues, so we show a more specific error
+                const errorMessage = activeCloudPath === USER_PROVIDED_PUBLIC_PATH
+                    ? `Failed to load shared public events. This may be due to security permissions. Please switch to 'My Private Events' to upload and view new data.`
+                    : `Failed to load events: ${error.message}`;
+                showModal("Data Error", errorMessage, [{ text: "OK", action: () => {} }]);
             });
         };
 
@@ -292,6 +328,10 @@
                 showModal("Validation Error", "Please select a CSV file to upload.", [{ text: "OK", action: () => {} }]);
                 return;
             }
+            if (!activeCloudPath || !db) {
+                showModal("Error", "Cloud connection is not ready. Please wait a moment.", [{ text: "OK", action: () => {} }]);
+                return;
+            }
 
             statusMessage.textContent = "Uploading...";
             statusMessage.classList.remove('hidden', 'bg-red-100', 'bg-green-100');
@@ -309,7 +349,7 @@
                         return;
                     }
 
-                    const docRef = db.collection(PUBLIC_DATA_PATH).doc(eventName);
+                    const docRef = db.collection(activeCloudPath).doc(eventName);
                     
                     await docRef.set({
                         data: JSON.stringify(parsedData) // Store as a JSON string
@@ -337,12 +377,17 @@
 
         // --- Delete Event Function ---
         const deleteEvent = async (eventId) => {
+            if (!activeCloudPath || !db) {
+                showModal("Error", "Cloud connection is not ready. Please wait a moment.", [{ text: "OK", action: () => {} }]);
+                return;
+            }
+            
             try {
                 statusMessage.textContent = `Deleting event "${eventId}"...`;
                 statusMessage.classList.remove('hidden', 'bg-green-100', 'bg-red-100');
                 statusMessage.classList.add('bg-gray-100', 'text-gray-500');
 
-                const docRef = db.collection(PUBLIC_DATA_PATH).doc(eventId);
+                const docRef = db.collection(activeCloudPath).doc(eventId);
                 await docRef.delete();
 
                 statusMessage.textContent = `Event "${eventId}" successfully deleted!`;

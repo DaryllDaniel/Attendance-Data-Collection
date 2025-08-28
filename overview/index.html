@@ -30,7 +30,7 @@
             background-attachment: fixed;
             position: relative;
         }
-        
+
         body::before {
             content: '';
             position: absolute;
@@ -100,6 +100,13 @@
     </div>
 
     <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col gap-8 z-20">
+        <!-- The connection status section is now hidden but the content is still updated for debugging purposes -->
+        <div class="flex-1 p-4 bg-gray-100 rounded-lg hidden">
+            <h2 class="text-lg font-bold text-gray-800 mb-2">Connection Status</h2>
+            <p class="text-sm text-gray-700"><strong>User ID:</strong> <span id="user-id-display" class="font-mono break-all"></span></p>
+            <p class="text-sm text-gray-700"><strong>Cloud Path:</strong> <span id="cloud-path-display" class="font-mono break-all"></span></p>
+        </div>
+        
         <!-- Upload Section -->
         <div class="flex-1">
             <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Upload CSV Data</h2>
@@ -173,6 +180,8 @@
         const modalTitle = document.getElementById('modal-title');
         const modalMessage = document.getElementById('modal-message');
         const modalButtonsContainer = document.getElementById('modal-buttons');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const cloudPathDisplay = document.getElementById('cloud-path-display');
 
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
@@ -193,6 +202,8 @@
                 auth.onAuthStateChanged((user) => {
                     if (user) {
                         userId = user.uid;
+                        userIdDisplay.textContent = userId; // Display the user ID
+                        cloudPathDisplay.textContent = PUBLIC_DATA_PATH; // Display the cloud path
                         statusMessage.textContent = "Connected to the cloud. Ready to upload.";
                         statusMessage.classList.remove('hidden');
                         statusMessage.classList.add('bg-gray-100', 'text-gray-500');
@@ -201,6 +212,8 @@
                     } else {
                         // Handle signed-out state if necessary
                         console.log("User is signed out.");
+                        userIdDisplay.textContent = "Not authenticated";
+                        cloudPathDisplay.textContent = "Not connected";
                         statusMessage.textContent = "Signed out. Reconnecting...";
                         statusMessage.classList.remove('hidden');
                         statusMessage.classList.add('bg-gray-100', 'text-gray-500');
@@ -218,6 +231,7 @@
 
         // --- Subscribe to Events for Real-time Updates ---
         const subscribeToEvents = () => {
+            console.log(`Subscribing to Firestore path: ${PUBLIC_DATA_PATH}`);
             const q = db.collection(PUBLIC_DATA_PATH);
             q.onSnapshot((snapshot) => {
                 const events = [];
@@ -236,7 +250,7 @@
         const renderEventsList = (events) => {
             eventsListContainer.innerHTML = ''; // Clear previous list
             if (events.length === 0) {
-                eventsListContainer.innerHTML = '<p class="text-center text-gray-500 italic">No events uploaded yet.</p>';
+                eventsListContainer.innerHTML = '<p class="text-center text-gray-500 italic">No events uploaded yet. Upload a new event to see it here.</p>';
                 return;
             }
 

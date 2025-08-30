@@ -98,7 +98,7 @@
         <p class="text-gray-200 drop-shadow-md">Upload and manage student data.</p>
     </div>
 
-    <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col gap-8 z-20">
+    <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-xl flex flex-col gap-8 z-20">
         <div class="flex-1 p-4 bg-gray-100 rounded-lg">
             <h2 class="text-lg font-bold text-gray-800 mb-2">Connection Status</h2>
             <p class="text-sm text-gray-700"><strong>User ID:</strong> <span id="user-id-display" class="font-mono break-all"></span></p>
@@ -107,9 +107,9 @@
         
         <div class="flex-1">
             <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Upload CSV Data</h2>
-            <div class="flex flex-col md:flex-row items-center justify-center gap-4 mb-6">
-                <input type="text" id="event-name-input" placeholder="Enter Event Name" class="w-full md:w-1/2 p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200" />
-                <input type="file" id="file-input" class="w-full md:w-1/2 p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200" accept=".csv" />
+            <div class="flex flex-col items-center justify-center gap-4 mb-6">
+                <input type="text" id="event-name-input" placeholder="Enter Event Name" class="w-full p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200" />
+                <input type="file" id="file-input" class="w-full p-3 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200" accept=".csv" />
             </div>
             <div class="flex justify-center">
                 <button id="upload-button" class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition-all duration-300 transform hover:scale-105">
@@ -120,17 +120,6 @@
 
         <div id="status-message" class="text-center p-4 text-gray-500 font-medium bg-gray-100 rounded-lg hidden">
             Awaiting file selection...
-        </div>
-
-        <div>
-            <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Manage Events</h2>
-            <div class="flex justify-center items-center mb-4">
-                <label for="path-selector" class="mr-2 text-gray-700">View events from:</label>
-                <select id="path-selector" class="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </select>
-            </div>
-            <div id="events-list-container" class="space-y-4">
-                </div>
         </div>
     </div>
 
@@ -177,15 +166,13 @@
         const fileInput = document.getElementById('file-input');
         const uploadButton = document.getElementById('upload-button');
         const statusMessage = document.getElementById('status-message');
-        const eventsListContainer = document.getElementById('events-list-container');
         const modal = document.getElementById('custom-modal');
         const modalTitle = document.getElementById('modal-title');
         const modalMessage = document.getElementById('modal-message');
         const modalButtonsContainer = document.getElementById('modal-buttons');
         const userIdDisplay = document.getElementById('user-id-display');
         const cloudPathDisplay = document.getElementById('cloud-path-display');
-        const pathSelector = document.getElementById('path-selector');
-
+        
         // --- Firebase Initialization and Auth Setup ---
         const setupFirebase = async () => {
             try {
@@ -204,27 +191,12 @@
                         userId = user.uid;
                         userIdDisplay.textContent = userId; // Display the user ID
 
-                        // Populate the path selector dropdown
-                        const newUserPath = `${NEW_USER_PATH_PREFIX}${userId}/${EVENTS_COLLECTION_NAME}`;
-                        pathSelector.innerHTML = `
-                            <option value="${newUserPath}">My Private Events</option>
-                            <option value="${USER_PROVIDED_PUBLIC_PATH}">Shared Public Events</option>
-                        `;
-
-                        // Set the initial path and start listening
-                        activeCloudPath = newUserPath;
+                        // The app now defaults to the private user path
+                        activeCloudPath = `${NEW_USER_PATH_PREFIX}${userId}/${EVENTS_COLLECTION_NAME}`;
                         cloudPathDisplay.textContent = activeCloudPath;
                         statusMessage.textContent = "Connected to the cloud. Ready to upload.";
                         statusMessage.classList.remove('hidden');
                         statusMessage.classList.add('bg-gray-100', 'text-gray-500');
-                        subscribeToEvents();
-
-                        // Add event listener for the path selector
-                        pathSelector.addEventListener('change', (e) => {
-                            activeCloudPath = e.target.value;
-                            cloudPathDisplay.textContent = activeCloudPath;
-                            subscribeToEvents(); // Re-subscribe to the new path
-                        });
 
                     } else {
                         // Sign in anonymously to get a user ID
@@ -242,56 +214,6 @@
                 statusMessage.classList.remove('text-gray-500', 'bg-gray-100');
                 statusMessage.classList.add('text-red-600', 'bg-red-100');
             }
-        };
-
-        // --- Subscribe to Events for Real-time Updates ---
-        const subscribeToEvents = () => {
-            if (unsubscribeListener) {
-                unsubscribeListener(); // Unsubscribe from the old listener
-            }
-
-            if (!activeCloudPath || !db) {
-                console.error("Cannot subscribe to events. Cloud path or database not initialized.");
-                return;
-            }
-
-            console.log(`Subscribing to Firestore path: ${activeCloudPath}`);
-            const q = db.collection(activeCloudPath);
-            unsubscribeListener = q.onSnapshot((snapshot) => {
-                const events = [];
-                snapshot.forEach((doc) => {
-                    events.push({ id: doc.id, ...doc.data() });
-                });
-                renderEventsList(events);
-            }, (error) => {
-                console.error("Error subscribing to events: ", error);
-                // The public path might have permission issues, so we show a more specific error
-                const errorMessage = activeCloudPath === USER_PROVIDED_PUBLIC_PATH
-                    ? `Failed to load shared public events. This may be due to security permissions. Please switch to 'My Private Events' to upload and view new data.`
-                    : `Failed to load events: ${error.message}`;
-                showModal("Data Error", errorMessage, [{ text: "OK", action: () => {} }]);
-            });
-        };
-
-        // --- Render Events List ---
-        const renderEventsList = (events) => {
-            eventsListContainer.innerHTML = ''; // Clear previous list
-            if (events.length === 0) {
-                eventsListContainer.innerHTML = '<p class="text-center text-gray-500 italic">No events uploaded yet. Upload a new event to see it here.</p>';
-                return;
-            }
-
-            events.forEach(event => {
-                const eventCard = document.createElement('div');
-                eventCard.className = 'flex justify-between items-center p-4 bg-gray-100 rounded-lg shadow-md';
-                
-                const eventName = document.createElement('span');
-                eventName.className = 'font-semibold text-gray-800 break-all';
-                eventName.textContent = event.id; // The event name is the document ID
-                
-                eventCard.appendChild(eventName);
-                eventsListContainer.appendChild(eventCard);
-            });
         };
 
         // --- Data Upload Function ---

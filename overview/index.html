@@ -12,11 +12,10 @@
                     fontFamily: {
                         sans: ['Inter', 'sans-serif'],
                     },
-                }
-            }
-        }
+                },
+            },
+        };
     </script>
-    <!-- Corrected Firebase SDK imports to use the global 'firebase' namespace -->
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore-compat.js"></script>
@@ -100,14 +99,12 @@
     </div>
 
     <div class="bg-white bg-opacity-80 p-8 md:p-12 rounded-xl shadow-2xl w-full max-w-7xl flex flex-col gap-8 z-20">
-        <!-- The connection status section is now visible to help with debugging -->
         <div class="flex-1 p-4 bg-gray-100 rounded-lg">
             <h2 class="text-lg font-bold text-gray-800 mb-2">Connection Status</h2>
             <p class="text-sm text-gray-700"><strong>User ID:</strong> <span id="user-id-display" class="font-mono break-all"></span></p>
             <p class="text-sm text-gray-700"><strong>Active Cloud Path:</strong> <span id="cloud-path-display" class="font-mono break-all"></span></p>
         </div>
         
-        <!-- Upload Section -->
         <div class="flex-1">
             <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Upload CSV Data</h2>
             <div class="flex flex-col md:flex-row items-center justify-center gap-4 mb-6">
@@ -121,34 +118,28 @@
             </div>
         </div>
 
-        <!-- Status Message -->
         <div id="status-message" class="text-center p-4 text-gray-500 font-medium bg-gray-100 rounded-lg hidden">
             Awaiting file selection...
         </div>
 
-        <!-- Events List Section -->
         <div>
             <h2 class="text-2xl font-bold text-gray-800 mb-4 text-center">Manage Events</h2>
             <div class="flex justify-center items-center mb-4">
                 <label for="path-selector" class="mr-2 text-gray-700">View events from:</label>
                 <select id="path-selector" class="p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <!-- Options will be added dynamically by JavaScript -->
-                </select>
+                    </select>
             </div>
             <div id="events-list-container" class="space-y-4">
-                <!-- Events will be dynamically added here -->
-            </div>
+                </div>
         </div>
     </div>
 
-    <!-- The custom modal for alerts and confirmations -->
     <div id="custom-modal" class="modal">
         <div class="modal-content">
             <h3 id="modal-title" class="text-xl font-bold mb-2"></h3>
             <p id="modal-message" class="text-gray-700 mb-4"></p>
             <div id="modal-buttons" class="modal-buttons">
-                <!-- Buttons will be added dynamically -->
-            </div>
+                </div>
         </div>
     </div>
     
@@ -298,19 +289,7 @@
                 eventName.className = 'font-semibold text-gray-800 break-all';
                 eventName.textContent = event.id; // The event name is the document ID
                 
-                const deleteButton = document.createElement('button');
-                deleteButton.className = 'px-4 py-2 bg-red-600 text-white rounded-lg shadow-md hover:bg-red-700 transition-all duration-200 transform hover:scale-105 ml-4';
-                deleteButton.textContent = 'Delete';
-                deleteButton.onclick = () => {
-                    // Show a confirmation modal before deleting
-                    showModal("Confirm Deletion", `Are you sure you want to delete the event "${event.id}"? This cannot be undone.`, [
-                        { text: "Cancel", action: () => {} },
-                        { text: "Delete", action: () => deleteEvent(event.id), style: "bg-red-600 hover:bg-red-700" }
-                    ]);
-                };
-
                 eventCard.appendChild(eventName);
-                eventCard.appendChild(deleteButton);
                 eventsListContainer.appendChild(eventCard);
             });
         };
@@ -370,33 +349,6 @@
                 console.error("Error during upload: ", e);
                 showModal("Upload Failed", `An error occurred: ${e.message}`, [{ text: "OK", action: () => {} }]);
                 statusMessage.textContent = "Upload failed!";
-                statusMessage.classList.remove('bg-gray-100', 'text-gray-500');
-                statusMessage.classList.add('bg-red-100', 'text-red-600');
-            }
-        };
-
-        // --- Delete Event Function ---
-        const deleteEvent = async (eventId) => {
-            if (!activeCloudPath || !db) {
-                showModal("Error", "Cloud connection is not ready. Please wait a moment.", [{ text: "OK", action: () => {} }]);
-                return;
-            }
-            
-            try {
-                statusMessage.textContent = `Deleting event "${eventId}"...`;
-                statusMessage.classList.remove('hidden', 'bg-green-100', 'bg-red-100');
-                statusMessage.classList.add('bg-gray-100', 'text-gray-500');
-
-                const docRef = db.collection(activeCloudPath).doc(eventId);
-                await docRef.delete();
-
-                statusMessage.textContent = `Event "${eventId}" successfully deleted!`;
-                statusMessage.classList.remove('bg-gray-100', 'text-gray-500');
-                statusMessage.classList.add('bg-green-100', 'text-green-600');
-            } catch (error) {
-                console.error("Error deleting document: ", error);
-                showModal("Deletion Failed", `Failed to delete event: ${error.message}`, [{ text: "OK", action: () => {} }]);
-                statusMessage.textContent = "Deletion failed!";
                 statusMessage.classList.remove('bg-gray-100', 'text-gray-500');
                 statusMessage.classList.add('bg-red-100', 'text-red-600');
             }
